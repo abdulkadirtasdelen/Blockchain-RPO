@@ -1,0 +1,591 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Merkle Kanıtı Atölyesi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: single reading column; the tree lab is a wide scrollable instrument panel, exercises below as a worksheet */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#14212b; --muted:#5b6b78; --line:#d5dde4;
+  --path:#c77700; --path-bg:#fff1d9; --proof:#0b6fa8; --proof-bg:#dcf0fb; --bad:#c2352b; --bad-bg:#fde3e0; --ok:#1d7a46; --ok-bg:#dcf3e5;
+  --node:#eef2f5; --node-ink:#2a3946;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Source Sans 3",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f161c; --surface:#16212a; --ink:#e4ebf0; --muted:#93a4b1; --line:#2a3946;
+  --path:#f2a63a; --path-bg:#3a2a10; --proof:#5ab8ef; --proof-bg:#0f2f44; --bad:#ff7a6e; --bad-bg:#43191a; --ok:#5fd18f; --ok-bg:#123524;
+  --node:#1e2c37; --node-ink:#c9d5de; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --surface:#16212a; --ink:#e4ebf0; --muted:#93a4b1; --line:#2a3946;
+  --path:#f2a63a; --path-bg:#3a2a10; --proof:#5ab8ef; --proof-bg:#0f2f44; --bad:#ff7a6e; --bad-bg:#43191a; --ok:#5fd18f; --ok-bg:#123524;
+  --node:#1e2c37; --node-ink:#c9d5de; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px;display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(30px,5vw,46px);font-weight:700}
+h2{font-size:26px;font-weight:700}
+h3{font-size:19px;font-weight:500}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+section{display:flex;flex-direction:column;gap:16px}
+.formula{font-family:var(--f-mono);font-size:clamp(20px,3.4vw,28px);padding:14px 18px;border-left:4px solid var(--path);background:var(--surface);align-self:flex-start;max-width:100%;overflow-x:auto}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:600 15px var(--f-body);background:var(--surface);color:var(--ink);border:0;padding:8px 14px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--proof);outline-offset:2px}
+.btn{font:600 15px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.treebox{overflow-x:auto;-webkit-overflow-scrolling:touch}
+svg text{font-family:var(--f-mono)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;border:2px solid}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.panel{display:flex;flex-direction:column;gap:10px;min-width:0}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.steps li{font-size:15px;padding:8px 10px;border-radius:8px;background:var(--node);min-width:0;overflow-wrap:anywhere}
+.steps .mono{font-size:13px}
+.verdict{font-weight:600;padding:10px 12px;border-radius:8px;overflow-wrap:anywhere}
+.verdict.ok{background:var(--ok-bg);color:var(--ok)}
+.verdict.bad{background:var(--bad-bg);color:var(--bad)}
+label{font-size:14px;color:var(--muted)}
+input[type=text],input[type=number]{font:15px var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%;box-sizing:border-box}
+.hdr{font-family:var(--f-mono);font-size:13px;overflow-wrap:anywhere;color:var(--muted)}
+.hdr b{color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:15px}
+.tbl{overflow-x:auto}
+th,td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
+td.hi{color:var(--path);font-weight:600}
+.bar{height:8px;border-radius:4px;background:var(--proof);display:inline-block;vertical-align:middle}
+.ex{display:flex;flex-direction:column;gap:10px;padding:16px 0;border-top:1px solid var(--line)}
+.ex .q{font-weight:600}
+.ex .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ex input{width:140px}
+.choice{font:15px var(--f-mono);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.choice.right{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.choice.wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.sol{background:var(--node);border-radius:8px;padding:10px 12px;font-size:15px}
+.fb{font-weight:600}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+.note{font-size:14px;color:var(--muted)}
+.steplist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;max-width:68ch}
+@media (prefers-reduced-motion:no-preference){svg g.n rect{transition:fill .2s,stroke .2s}}
+</style>
+<style>
+.n rect{fill:var(--node);stroke:var(--line);stroke-width:1.5}
+.n text{fill:var(--node-ink)}
+.n .lb{font-size:12px;font-weight:600}
+.n .hs{font-size:11px;fill:var(--muted)}
+.n.leaf{cursor:pointer}
+.n.leaf:hover rect{stroke:var(--ink)}
+.n.dup rect{fill:transparent;stroke:var(--muted);stroke-dasharray:4 3}
+.n.proof rect{fill:var(--proof-bg);stroke:var(--proof);stroke-width:2.5}
+.n.proof .lb{fill:var(--proof)}
+.n.path rect{fill:var(--path-bg);stroke:var(--path);stroke-width:2.5}
+.n.path .lb{fill:var(--path)}
+.n.chg rect{stroke:var(--bad);stroke-width:2.5}
+.n.chg .hs{fill:var(--bad)}
+.n:focus{outline:none}.n:focus-visible rect{stroke:var(--ink);stroke-width:3}
+.e{stroke:var(--line);stroke-width:1.5;fill:none}
+.e.dupe{stroke-dasharray:4 3}
+.e.pe{stroke:var(--path);stroke-width:2.5}
+.txl{font-size:11px;fill:var(--muted)}
+.txl.sel{fill:var(--path);font-weight:600}
+</style>
+<style>
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+textarea{font:13px/1.5 var(--f-mono);padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%;box-sizing:border-box;resize:vertical}
+pre.ascii{font:13px/1.45 var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;margin:0}
+.hexview{font:13px/1.9 var(--f-mono);overflow-wrap:anywhere;background:var(--bg);border-radius:8px;padding:10px}
+.hexview span{border-radius:3px;padding:1px 0}
+.sg-h{background:var(--path-bg);color:var(--path)}
+.sg-n{background:var(--ok-bg);color:var(--ok)}
+.sg-c{background:var(--node);color:var(--ink);outline:1px solid var(--line)}
+.sg-x{background:var(--proof-bg);color:var(--proof)}
+.sg-x2{background:var(--proof-bg);color:var(--ink)}
+.sg-f{background:var(--bad-bg);color:var(--bad)}
+.fields{overflow-x:auto}
+.fields td{white-space:normal;text-align:left;vertical-align:top;font-size:14px}
+.fields td.mono{font-size:12.5px;overflow-wrap:anywhere;min-width:220px}
+.fields td:first-child{white-space:nowrap;color:var(--muted)}
+.tag{display:inline-block;font:600 11px var(--f-mono);padding:2px 6px;border-radius:4px;margin-right:6px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+</style>
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="topbar">
+    <div class="eyebrow" data-i18n="eyebrow"></div>
+    <div class="seg" id="langseg" role="group" aria-label="Language / Dil">
+      <button data-lang="tr" aria-pressed="true">Türkçe</button><button data-lang="en" aria-pressed="false">English</button>
+    </div>
+  </div>
+  <h1 data-i18n="h1"></h1>
+  <p data-i18n="intro"></p>
+</header>
+
+<section>
+  <div class="eyebrow" data-i18n="ruleEy"></div>
+  <div class="formula" data-i18n="formula"></div>
+  <ol class="steplist">
+    <li data-i18n="r1"></li><li data-i18n="r2"></li><li data-i18n="r3"></li><li data-i18n="r4"></li>
+  </ol>
+</section>
+
+<section>
+  <div class="eyebrow" data-i18n="labEy"></div>
+  <h2 data-i18n="labH"></h2>
+  <div class="lab">
+    <div class="controls">
+      <span class="note" data-i18n="nLabel"></span>
+      <div class="seg" id="nseg" role="group">
+        <button data-n="4">4</button><button data-n="5">5</button><button data-n="8" aria-pressed="true">8</button><button data-n="16">16</button>
+      </div>
+      <button class="btn" id="reset" data-i18n="reset"></button>
+    </div>
+    <div class="legend">
+      <span><i class="sw" style="border-color:var(--path);background:var(--path-bg)"></i><b style="font-weight:400" data-i18n="lg1"></b></span>
+      <span><i class="sw" style="border-color:var(--proof);background:var(--proof-bg)"></i><b style="font-weight:400" data-i18n="lg2"></b></span>
+      <span><i class="sw" style="border-color:var(--bad);background:var(--bad-bg)"></i><b style="font-weight:400" data-i18n="lg3"></b></span>
+      <span><i class="sw" style="border-color:var(--muted);border-style:dashed;background:transparent"></i><b style="font-weight:400" data-i18n="lg4"></b></span>
+    </div>
+    <div class="treebox"><svg id="tree" role="img" aria-label="Merkle tree"></svg></div>
+    <div class="hdr" id="hdr"></div>
+    <div class="grid2">
+      <div class="panel">
+        <h3 id="ptitle"></h3>
+        <ol class="steps" id="steps"></ol>
+        <div class="verdict" id="verdict"></div>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="editH"></h3>
+        <label for="txedit" data-i18n="editLabel"></label>
+        <input type="text" id="txedit" autocomplete="off">
+        <p class="note" id="tamperinfo"></p>
+        <div class="panel" style="gap:6px">
+          <div class="eyebrow" data-i18n="costEy"></div>
+          <p id="cost" style="font-size:15px"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note" data-i18n="demoNote"></p>
+</section>
+
+<section>
+  <div class="eyebrow" data-i18n="scaleEy"></div>
+  <h2 data-i18n="scaleH"></h2>
+  <div class="tbl"><table>
+    <thead><tr><th data-i18n="th1"></th><th>⌈log₂ n⌉</th><th data-i18n="th3"></th><th data-i18n="th4"></th><th data-i18n="th5"></th></tr></thead>
+    <tbody id="scale"></tbody>
+  </table></div>
+  <p class="note" data-i18n="scaleNote"></p>
+</section>
+
+<section>
+  <div class="eyebrow" data-i18n="btcEy"></div>
+  <h2 data-i18n="btcH"></h2>
+  <p data-i18n="btcIntro"></p>
+<pre class="ascii">                 <span data-i18n="root"></span> f3e94742…5766
+              /                    \
+     [H01] ccdafb73…b815          H23 8e308990…ae49
+       /        \                   /          \
+   Tx1 8c14…   Tx2 fff2…     ★Tx3 6359f086…  [Tx4] e9a66845…</pre>
+  <div class="cols">
+    <div class="lab">
+      <div class="eyebrow" data-i18n="jsonEy"></div>
+      <h3 data-i18n="jsonH"></h3>
+      <p class="note" data-i18n="jsonP"></p>
+      <label for="jtx" data-i18n="jtxL"></label>
+      <input type="text" id="jtx" autocomplete="off" spellcheck="false">
+      <label for="jjson">JSON</label>
+      <textarea id="jjson" rows="9" spellcheck="false"></textarea>
+      <label for="jroot" data-i18n="jrootL"></label>
+      <input type="text" id="jroot" autocomplete="off" spellcheck="false">
+      <ol class="steps" id="jsteps"></ol>
+      <div class="verdict" id="jverdict"></div>
+    </div>
+    <div class="lab">
+      <div class="eyebrow" data-i18n="hexEy"></div>
+      <h3 data-i18n="hexH"></h3>
+      <p class="note" data-i18n="hexP"></p>
+      <label for="hexin" data-i18n="hexL"></label>
+      <textarea id="hexin" rows="7" spellcheck="false"></textarea>
+      <div class="legend" id="hexlegend"></div>
+      <div class="hexview" id="hexview"></div>
+    </div>
+  </div>
+  <div class="lab">
+    <h3 data-i18n="decH"></h3>
+    <div class="fields"><table><tbody id="fields"></tbody></table></div>
+    <h3 data-i18n="travH"></h3>
+    <p class="note" data-i18n="travP"></p>
+    <ol class="steps" id="trav"></ol>
+    <div class="verdict" id="hverdict"></div>
+  </div>
+  <ul class="steplist" style="padding-left:20px">
+    <li data-i18n="trap1"></li>
+    <li data-i18n="trap2"></li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow" data-i18n="exEy"></div>
+  <h2 data-i18n="exH"></h2>
+  <div id="exercises"></div>
+</section>
+</div>
+<script>
+const HI=[],K=[];(function(){let n=2,c=0;const p=x=>{for(let i=2;i*i<=x;i++)if(x%i===0)return false;return true};while(c<64){if(p(n)){if(c<8)HI[c]=(Math.pow(n,1/2)%1)*4294967296|0;K[c]=(Math.pow(n,1/3)%1)*4294967296|0;c++}n++}})();
+const ror=(x,n)=>(x>>>n)|(x<<(32-n));
+function sha256b(m){const l=m.length,total=Math.ceil((l+9)/64)*64,buf=new Uint8Array(total);buf.set(m);buf[l]=0x80;const dv=new DataView(buf.buffer),bits=l*8;dv.setUint32(total-4,bits>>>0);dv.setUint32(total-8,Math.floor(bits/4294967296));let H=HI.slice();const w=new Int32Array(64);for(let o=0;o<total;o+=64){for(let i=0;i<16;i++)w[i]=dv.getUint32(o+i*4);for(let i=16;i<64;i++){const s0=ror(w[i-15],7)^ror(w[i-15],18)^(w[i-15]>>>3),s1=ror(w[i-2],17)^ror(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0}let[a,b,c,d,e,f,g,h]=H;for(let i=0;i<64;i++){const S1=ror(e,6)^ror(e,11)^ror(e,25),ch=(e&f)^(~e&g),t1=(h+S1+ch+K[i]+w[i])|0,S0=ror(a,2)^ror(a,13)^ror(a,22),mj=(a&b)^(a&c)^(b&c),t2=(S0+mj)|0;h=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0}const v=[a,b,c,d,e,f,g,h];H=H.map((x,j)=>(x+v[j])|0)}const out=new Uint8Array(32),ov=new DataView(out.buffer);H.forEach((x,i)=>ov.setUint32(i*4,x>>>0));return out}
+const toHex=u=>Array.from(u,b=>b.toString(16).padStart(2,'0')).join('');
+const fromHex=h=>{h=h.replace(/[^0-9a-fA-F]/g,'');if(h.length%2)throw new Error('odd');const u=new Uint8Array(h.length/2);for(let i=0;i<u.length;i++)u[i]=parseInt(h.substr(i*2,2),16);return u};
+const sha256=s=>toHex(sha256b(new TextEncoder().encode(s)));
+const sha256d=u=>sha256b(sha256b(u));
+const cat=(a,b)=>{const u=new Uint8Array(a.length+b.length);u.set(a);u.set(b,a.length);return u};
+const revU=u=>Uint8Array.from(u).reverse();
+const revHex=h=>toHex(revU(fromHex(h)));
+const I18N={
+tr:{
+eyebrow:'SENG433 · Hafta 3 · Merkle Ağaçları',
+h1:'Merkle Kanıtı Atölyesi',
+intro:'Bir işlemin bloğun içinde olduğunu kanıtlamak için tüm işlemleri indirmeniz gerekmez. Ağacın her katından bir “kardeş” hash yeterlidir. Aşağıdaki ağaç tarayıcınızda gerçek SHA-256 ile hesaplanıyor. Bir işleme tıklayın, kanıt yolunu izleyin, sonra işlemi değiştirip neyin bozulduğunu görün.',
+ruleEy:'Temel kural',formula:'kanıt uzunluğu = ⌈log₂(n)⌉ hash',
+r1:'Her katta yukarı çıkarken yanınızdaki tek bir hash’e (kardeşe) ihtiyaç var.',
+r2:'Her kat, düğüm sayısını yarıya indirir. n yaprağı 1 köke indirmek için log₂(n) kat gerekir.',
+r3:'n ikinin kuvveti değilse yukarı yuvarlayın: ⌈log₂(n)⌉. Bitcoin tek kalan düğümü kendisiyle eşler (kopyalar).',
+r4:'Her hash 32 bayttır. Kanıt boyutu = hash sayısı × 32 bayt.',
+labEy:'Laboratuvar',labH:'Ağacı kendiniz kurun',nLabel:'İşlem sayısı:',reset:'Sıfırla',
+lg1:'Kanıt yolu (hesaplanan)',lg2:'Kanıt hash’i (sunucudan gelir)',lg3:'Değişen düğüm',lg4:'Kopya (tek sayı)',
+root:'Kök',copy:'kopya',
+hdr:r=>`Blok başlığındaki Merkle kökü (32 bayt): <b>${r}</b>`,
+hdrNew:r=>`<br>Değişiklikten sonra hesaplanan kök: <b style="color:var(--bad)">${r}</b>`,
+stepsT:i=>`Tx${i} için doğrulama adımları`,
+step1:(i,t,h)=>`<b>1.</b> İşlemi hash’le: H${i} = SHA256("${t}") = <span class="mono">${h}</span>`,
+sibCopy:o=>`kopya (kardeşi yok, ${o} kopyalanır)`,
+stepN:(k,s,left,p,expr,h)=>`<b>${k}.</b> Kardeş <span style="color:var(--proof);font-weight:600">${s}</span> ${left?'sağda':'solda'} → ${p} = SHA256(${expr}) = <span class="mono">${h}</span>`,
+vOk:i=>`✓ Hesaplanan kök başlıktaki kökle eşleşti. Tx${i} bu blokta.`,
+vBad:(a,b)=>`✗ Hesaplanan kök (${a}) başlıktaki kökle (${b}) eşleşmiyor. Kanıt geçersiz.`,
+editH:'İşlemi değiştirmeyi deneyin',editLabel:'Seçili işlemin metni (örn. 5 BTC’yi 50 BTC yapın)',
+tChg:(n,l)=>`<span style="color:var(--bad);font-weight:600">${n} hash değişti:</span> ${l}. Değişiklik yapraktan köke kadar zincirleme yayıldı; başlıktaki kök artık eşleşmiyor.`,
+tNone:'Hiçbir işlem değiştirilmedi. Bir harf ya da rakam değiştirip ağaca bakın.',
+costEy:'Kanıtın maliyeti',
+cost:(n,k)=>`${n} işlem → <b>${k} kanıt hash’i</b> (⌈log₂ ${n}⌉ = ${k}) × 32 B = <b>${k*32} bayt</b>. Tüm tx hash’lerini indirmek ${n*32} bayt tutardı.`,
+demoNote:'Not: Derste olduğu gibi demo, metin üzerinde tek SHA-256 kullanıyor. Bitcoin ikili veri üzerinde çift SHA-256 (SHA-256d) kullanır; aşağıdaki “Gerçek Bitcoin” bölümü bunu gösteriyor.',
+scaleEy:'Ölçek',scaleH:'İşlem sayısı katlanınca kanıt sadece 1 hash büyür',
+th1:'İşlem (n)',th3:'Kanıt boyutu',th4:'Tüm tx hash’leri',th5:'Oran',typical:' (tipik Bitcoin bloğu)',
+scaleNote:'“Tüm tx hash’leri” = n × 32 bayt. SPV cüzdan bunun yerine 80 baytlık blok başlığını ve kanıtı indirir (Nakamoto 2008, §8).',
+btcEy:'Gerçek Bitcoin',btcH:'Bitcoin kanıtı gerçekte nasıl görünür?',
+btcIntro:'Örnek, derste incelediğimiz blok #100.000’den. Blokta 4 işlem var ve kanıtlanan işlem Tx3 (sıra no. 2, sayım 0’dan başlar). Aynı kanıt iki biçimde gelir: SPV cüzdanların kullandığı okunabilir JSON ve Bitcoin Core’un <span class="mono">gettxoutproof</span> komutunun döndürdüğü ham hex. İki alanı da düzenleyebilirsiniz; sonuç anında yeniden hesaplanır.',
+jsonEy:'Biçim 1 · Electrum / SPV',jsonH:'Okunabilir JSON kanıtı',
+jsonP:'pos değerinin bitleri her adımda kardeşin solda mı sağda mı olduğunu söyler: bit 0 ise bizim hash solda, 1 ise sağda.',
+jtxL:'Kanıtlanacak txid (explorer’da görünen sıra)',jrootL:'Blok başlığındaki Merkle kökü',
+jStart:t=>`<b>0.</b> Başlangıç: h = txid (ham veride bayt sırası ters çevrilir) = <span class="mono">${t}</span>`,
+jStep:(k,bit,left,s,h)=>`<b>${k}.</b> pos biti ${bit} → bizim hash ${left?'solda':'sağda'}: h = SHA256d(${left?'h ‖ '+s:s+' ‖ h'}) = <span class="mono">${h}</span>`,
+jOk:'✓ Kök eşleşti. İşlem bu blokta.',jBad:'✗ Kök eşleşmiyor. Kanıt geçersiz.',jErr:e=>`Okunamadı: ${e}`,
+hexEy:'Biçim 2 · Bitcoin Core',hexH:'Ham hex kanıtı (gettxoutproof)',
+hexP:'Bu dizgi BIP 37’deki merkleblock yapısıdır: 80 baytlık başlık, işlem sayısı, hash listesi ve ağacın nasıl gezileceğini söyleyen bayrak bitleri.',
+hexL:'gettxoutproof çıktısı',
+sgH:'Blok başlığı (80 B)',sgN:'İşlem sayısı (4 B)',sgC:'Sayaç (varint)',sgX:'Hash’ler (32 B)',sgF:'Bayrak baytları',
+decH:'Çözülmüş alanlar',
+fVer:'Version',fPrev:'Önceki blok hash’i',fRoot:'Merkle kökü',fTime:'Timestamp',fBits:'nBits',fNonce:'Nonce',fHash:'Blok hash’i (SHA256d başlık)',fNtx:'Bloktaki işlem sayısı',fHc:'Kanıttaki hash sayısı',fFl:'Bayrak bitleri',
+flBits:(b,x)=>`${b} (bayt değeri 0x${x}, en düşük bitten okunur)`,
+travH:'Ağaç gezintisi',
+travP:'Doğrulayıcı kökten başlar, önce sol sonra sağ dala gider. Bit 1 “altında aranan işlem var, içine gir”, bit 0 “içine girme, sıradaki hash’i kullan” demektir. Yaprakta bit 1 ise o işlem aranan işlemdir.',
+nodeName:(h,p)=>h===0?`Tx${p+1}`:`Düğüm (kat ${h}, sıra ${p})`,
+tvIn:(n,b)=>`${n} → bit ${b}: içine gir`,
+tvHash:(n,b,h)=>`${n} → bit ${b}: hash’i kullan <span class="mono">${h}</span>`,
+tvMatch:(n,h)=>`${n} → bit 1: <b style="color:var(--path)">★ aranan işlem</b> <span class="mono">${h}</span>`,
+tvDup:n=>`${n}: sağ kardeş yok, sol hash kopyalanır`,
+tvCombine:(n,h)=>`${n} = SHA256d(sol ‖ sağ) = <span class="mono">${h}</span>`,
+hOk:t=>`✓ Hesaplanan kök başlıktaki kökle eşleşti. Kanıtlanan txid: ${t}`,
+hBad:'✗ Hesaplanan kök başlıktaki kökle eşleşmiyor.',hErr:e=>`Hex çözülemedi: ${e}`,
+trap1:'<b>Bayt sırası ters:</b> Explorer’da görünen <span class="mono">6359f086…</span> ham veride <span class="mono">c46e239a…</span> olarak durur. Önceki blok hash’i de aynı nedenle <span class="mono">0000…02d01c…</span> yerine <span class="mono">5012…0000</span> olarak görünür.',
+trap2:'<b>SHA256d:</b> Bitcoin’de her birleştirme çift SHA-256’dır: SHA256(SHA256(sol ‖ sağ)). Doğrulama için bitcoin-cli verifytxoutproof &lt;hex&gt; kullanılır.',
+exEy:'Alıştırmalar',exH:'Kendinizi test edin',check:'Kontrol et',showSol:'Çözümü göster',right:'Doğru!',wrong:'Tekrar deneyin.',empty:'Önce bir sayı yazın.',ansL:'Cevap',
+pick:i=>`İşlem ${i} seç`,
+},
+en:{
+eyebrow:'SENG433 · Week 3 · Merkle Trees',
+h1:'Merkle Proof Workshop',
+intro:'You don’t need every transaction to prove that one of them is in a block. One “sibling” hash from each level of the tree is enough. The tree below is computed in your browser with real SHA-256. Click a transaction, follow its proof path, then change it and watch what breaks.',
+ruleEy:'The core rule',formula:'proof length = ⌈log₂(n)⌉ hashes',
+r1:'At each level on the way up, you need exactly one hash next to yours (the sibling).',
+r2:'Each level halves the number of nodes. Going from n leaves to 1 root takes log₂(n) levels.',
+r3:'If n is not a power of two, round up: ⌈log₂(n)⌉. Bitcoin pairs a leftover node with itself (duplicates it).',
+r4:'Each hash is 32 bytes. Proof size = number of hashes × 32 bytes.',
+labEy:'Lab',labH:'Build the tree yourself',nLabel:'Transactions:',reset:'Reset',
+lg1:'Proof path (computed)',lg2:'Proof hash (sent by server)',lg3:'Changed node',lg4:'Duplicate (odd count)',
+root:'Root',copy:'copy',
+hdr:r=>`Merkle root in the block header (32 bytes): <b>${r}</b>`,
+hdrNew:r=>`<br>Root recomputed after the change: <b style="color:var(--bad)">${r}</b>`,
+stepsT:i=>`Verification steps for Tx${i}`,
+step1:(i,t,h)=>`<b>1.</b> Hash the transaction: H${i} = SHA256("${t}") = <span class="mono">${h}</span>`,
+sibCopy:o=>`copy (no sibling, ${o} is duplicated)`,
+stepN:(k,s,left,p,expr,h)=>`<b>${k}.</b> Sibling <span style="color:var(--proof);font-weight:600">${s}</span> on the ${left?'right':'left'} → ${p} = SHA256(${expr}) = <span class="mono">${h}</span>`,
+vOk:i=>`✓ The computed root matches the header. Tx${i} is in this block.`,
+vBad:(a,b)=>`✗ The computed root (${a}) does not match the header root (${b}). The proof is invalid.`,
+editH:'Try tampering with the transaction',editLabel:'Text of the selected transaction (e.g. change 5 BTC to 50 BTC)',
+tChg:(n,l)=>`<span style="color:var(--bad);font-weight:600">${n} hashes changed:</span> ${l}. The change rippled from the leaf up to the root, so the header root no longer matches.`,
+tNone:'No transaction has been changed. Edit a letter or a digit and watch the tree.',
+costEy:'Cost of the proof',
+cost:(n,k)=>`${n} transactions → <b>${k} proof hashes</b> (⌈log₂ ${n}⌉ = ${k}) × 32 B = <b>${k*32} bytes</b>. Downloading every tx hash would take ${n*32} bytes.`,
+demoNote:'Note: as in the lecture, this demo uses single SHA-256 over text. Bitcoin uses double SHA-256 (SHA-256d) over binary data; the “Real Bitcoin” section below shows that.',
+scaleEy:'Scale',scaleH:'Double the transactions and the proof grows by just one hash',
+th1:'Transactions (n)',th3:'Proof size',th4:'All tx hashes',th5:'Ratio',typical:' (typical Bitcoin block)',
+scaleNote:'“All tx hashes” = n × 32 bytes. An SPV wallet downloads the 80-byte block header plus the proof instead (Nakamoto 2008, §8).',
+btcEy:'Real Bitcoin',btcH:'What does a Bitcoin proof actually look like?',
+btcIntro:'This example comes from block #100,000, which we looked at in class. The block holds 4 transactions and we prove Tx3 (position 2, counting from 0). The same proof comes in two forms: readable JSON used by SPV wallets, and the raw hex returned by Bitcoin Core’s <span class="mono">gettxoutproof</span>. Both fields are editable and recompute instantly.',
+jsonEy:'Format 1 · Electrum / SPV',jsonH:'Readable JSON proof',
+jsonP:'The bits of pos tell you, step by step, which side the sibling is on: bit 0 means our hash is on the left, 1 means it is on the right.',
+jtxL:'txid to prove (as shown in explorers)',jrootL:'Merkle root in the block header',
+jStart:t=>`<b>0.</b> Start: h = txid (bytes are reversed in raw data) = <span class="mono">${t}</span>`,
+jStep:(k,bit,left,s,h)=>`<b>${k}.</b> pos bit ${bit} → our hash is on the ${left?'left':'right'}: h = SHA256d(${left?'h ‖ '+s:s+' ‖ h'}) = <span class="mono">${h}</span>`,
+jOk:'✓ Root matches. The transaction is in this block.',jBad:'✗ Root does not match. The proof is invalid.',jErr:e=>`Could not read: ${e}`,
+hexEy:'Format 2 · Bitcoin Core',hexH:'Raw hex proof (gettxoutproof)',
+hexP:'This string is the merkleblock structure from BIP 37: the 80-byte header, the transaction count, a list of hashes, and flag bits that say how to walk the tree.',
+hexL:'gettxoutproof output',
+sgH:'Block header (80 B)',sgN:'Tx count (4 B)',sgC:'Counter (varint)',sgX:'Hashes (32 B)',sgF:'Flag bytes',
+decH:'Decoded fields',
+fVer:'Version',fPrev:'Previous block hash',fRoot:'Merkle root',fTime:'Timestamp',fBits:'nBits',fNonce:'Nonce',fHash:'Block hash (SHA256d of header)',fNtx:'Transactions in block',fHc:'Hashes in proof',fFl:'Flag bits',
+flBits:(b,x)=>`${b} (byte value 0x${x}, read from the lowest bit)`,
+travH:'Tree walk',
+travP:'The verifier starts at the root and visits the left branch before the right. Bit 1 means “the target is below, go inside”; bit 0 means “don’t go inside, take the next hash”. A leaf with bit 1 is the transaction being proved.',
+nodeName:(h,p)=>h===0?`Tx${p+1}`:`Node (level ${h}, index ${p})`,
+tvIn:(n,b)=>`${n} → bit ${b}: go inside`,
+tvHash:(n,b,h)=>`${n} → bit ${b}: take hash <span class="mono">${h}</span>`,
+tvMatch:(n,h)=>`${n} → bit 1: <b style="color:var(--path)">★ target transaction</b> <span class="mono">${h}</span>`,
+tvDup:n=>`${n}: no right sibling, left hash is duplicated`,
+tvCombine:(n,h)=>`${n} = SHA256d(left ‖ right) = <span class="mono">${h}</span>`,
+hOk:t=>`✓ The computed root matches the header root. Proven txid: ${t}`,
+hBad:'✗ The computed root does not match the header root.',hErr:e=>`Could not decode hex: ${e}`,
+trap1:'<b>Byte order is reversed:</b> the txid <span class="mono">6359f086…</span> you see in an explorer is stored as <span class="mono">c46e239a…</span> in raw data. For the same reason the previous block hash shows up as <span class="mono">5012…0000</span> instead of <span class="mono">0000…02d01c…</span>.',
+trap2:'<b>SHA256d:</b> every combination in Bitcoin is double SHA-256: SHA256(SHA256(left ‖ right)). To verify, run bitcoin-cli verifytxoutproof &lt;hex&gt;.',
+exEy:'Exercises',exH:'Test yourself',check:'Check',showSol:'Show solution',right:'Correct!',wrong:'Try again.',empty:'Type a number first.',ansL:'Answer',
+pick:i=>`Select transaction ${i}`,
+}};
+const EXS={
+tr:[
+ {q:'8 işlemlik bir blokta Tx3’ün kanıtı için hangi hash’ler gerekir?',type:'choice',choices:['H4, H1–2, H5–8','H1, H2, H4','H4, H5–8','H3, H3–4, H1–4'],ans:0,sol:'H3 solda, kardeşi <b>H4</b>. Bir kat yukarıda H3–4 sağda, kardeşi <b>H1–2</b>. Bir kat daha yukarıda H1–4 solda, kardeşi <b>H5–8</b>. Üç hash, log₂(8) = 3. Son seçenek kanıt yolunun kendisi: doğrulayıcı o hash’leri zaten kendisi hesaplar.'},
+ {q:'64 işlem varsa kanıt kaç hash içerir?',type:'num',ans:6,sol:'64 = 2⁶ → log₂(64) = <b>6</b>.'},
+ {q:'Tipik bir Bitcoin bloğunda yaklaşık 3.000 işlem var. Kanıt kaç hash?',type:'num',ans:12,sol:'2¹¹ = 2.048 < 3.000 ≤ 2¹² = 4.096. log₂(3000) ≈ 11,55 → yukarı yuvarla: <b>12</b>.'},
+ {q:'1.000.000 işlemlik bir blokta kanıt kaç bayttır? (her hash 32 bayt)',type:'num',ans:640,sol:'2²⁰ = 1.048.576 ≥ 1.000.000 → 20 hash. 20 × 32 = <b>640 bayt</b>. Tüm tx hash’leri ise 32 MB: yaklaşık 50.000 kat fark.'},
+ {q:'Bloktaki işlem sayısı 1.024’ten 2.048’e çıkarsa kanıt kaç hash büyür?',type:'num',ans:1,sol:'log₂(1024) = 10, log₂(2048) = 11. İşlem sayısı ikiye katlanınca ağaca sadece bir kat eklenir: <b>1</b> hash.'},
+ {q:'5 işlemlik bir blokta kanıt kaç hash içerir?',type:'num',ans:3,sol:'5 tek sayı. Bitcoin son düğümü kopyalar: 5→6 yaprak, 3 düğüm→4, sonra 2, sonra 1 (kök). 3 kat → <b>3</b> hash. Formülle: ⌈log₂ 5⌉ = ⌈2,32⌉ = 3.'},
+ {q:'8 işlemlik bir blokta Tx6 değiştirilirse (yaprak ve kök dahil) kaç hash değişir?',type:'num',ans:4,sol:'H6 → H5–6 → H5–8 → Kök. Her katta tam bir düğüm: log₂(8) + 1 = <b>4</b>. Diğer 11 hash aynı kalır.'},
+ {q:'Bir kanıt 14 hash içeriyor. Blokta en fazla kaç işlem olabilir?',type:'num',ans:16384,sol:'14 kat en fazla 2¹⁴ = <b>16.384</b> yaprak taşır. (8.193 ile 16.384 arası her işlem sayısı 14 hash’lik kanıt üretir.)'},
+ {q:'Electrum kanıtında pos = 5 (ikili 101). İlk adımda kardeş hangi tarafta?',type:'choice',choices:['Solda','Sağda'],ans:0,sol:'En düşük bit 1 → bizim hash sağda, dolayısıyla kardeş <b>solda</b>: h = SHA256d(kardeş ‖ h).'},
+ {q:'4 işlemlik bir blok için 3 hash ve 1 bayrak baytı içeren gettxoutproof çıktısı kaç bayttır?',type:'num',ans:183,sol:'80 (başlık) + 4 (işlem sayısı) + 1 (hash sayacı) + 3 × 32 (hash’ler) + 1 (bayrak sayacı) + 1 (bayrak) = <b>183 bayt</b>.'},
+],
+en:[
+ {q:'In an 8-transaction block, which hashes are needed to prove Tx3?',type:'choice',choices:['H4, H1–2, H5–8','H1, H2, H4','H4, H5–8','H3, H3–4, H1–4'],ans:0,sol:'H3 is on the left, its sibling is <b>H4</b>. One level up, H3–4 is on the right, its sibling is <b>H1–2</b>. One more level, H1–4 is on the left, its sibling is <b>H5–8</b>. Three hashes, log₂(8) = 3. The last option is the proof path itself: the verifier computes those hashes on its own.'},
+ {q:'With 64 transactions, how many hashes are in the proof?',type:'num',ans:6,sol:'64 = 2⁶ → log₂(64) = <b>6</b>.'},
+ {q:'A typical Bitcoin block has about 3,000 transactions. How many hashes in the proof?',type:'num',ans:12,sol:'2¹¹ = 2,048 < 3,000 ≤ 2¹² = 4,096. log₂(3000) ≈ 11.55 → round up: <b>12</b>.'},
+ {q:'How many bytes is the proof in a 1,000,000-transaction block? (each hash is 32 bytes)',type:'num',ans:640,sol:'2²⁰ = 1,048,576 ≥ 1,000,000 → 20 hashes. 20 × 32 = <b>640 bytes</b>. All tx hashes would be 32 MB: roughly a 50,000× difference.'},
+ {q:'If a block grows from 1,024 to 2,048 transactions, how many hashes does the proof grow by?',type:'num',ans:1,sol:'log₂(1024) = 10, log₂(2048) = 11. Doubling the transactions adds just one level: <b>1</b> hash.'},
+ {q:'How many hashes are in the proof for a 5-transaction block?',type:'num',ans:3,sol:'5 is odd. Bitcoin duplicates the last node: 5→6 leaves, 3 nodes→4, then 2, then 1 (root). 3 levels → <b>3</b> hashes. By formula: ⌈log₂ 5⌉ = ⌈2.32⌉ = 3.'},
+ {q:'In an 8-transaction block, if Tx6 is changed, how many hashes change (leaf and root included)?',type:'num',ans:4,sol:'H6 → H5–6 → H5–8 → Root. Exactly one node per level: log₂(8) + 1 = <b>4</b>. The other 11 hashes stay the same.'},
+ {q:'A proof has 14 hashes. What is the maximum number of transactions in the block?',type:'num',ans:16384,sol:'14 levels hold at most 2¹⁴ = <b>16,384</b> leaves. (Any count from 8,193 to 16,384 gives a 14-hash proof.)'},
+ {q:'In an Electrum proof, pos = 5 (binary 101). In the first step, which side is the sibling on?',type:'choice',choices:['Left','Right'],ans:0,sol:'The lowest bit is 1 → our hash is on the right, so the sibling is on the <b>left</b>: h = SHA256d(sibling ‖ h).'},
+ {q:'How many bytes is a gettxoutproof output for a 4-transaction block with 3 hashes and 1 flag byte?',type:'num',ans:183,sol:'80 (header) + 4 (tx count) + 1 (hash counter) + 3 × 32 (hashes) + 1 (flag counter) + 1 (flags) = <b>183 bytes</b>.'},
+]};
+let lang='tr';try{const s=localStorage.getItem('merkle-lang');if(s==='en'||s==='tr')lang=s;}catch(e){}
+const T=(k,...a)=>{const v=I18N[lang][k];return typeof v==='function'?v(...a):v;};
+const LOC=()=>lang==='tr'?'tr-TR':'en-US';
+const NAMES=['Ali','Ayşe','Burak','Ceren','Deniz','Elif','Fatih','Gizem','Hakan','Irmak','Kerem','Leyla','Mert','Nil','Onur','Pelin','Rüzgar'];
+const AMT=[5,2,7,1,3,9,4,6,8,2,5,1,3,7,6,4];
+const mkTx=n=>Array.from({length:n},(_,i)=>`Tx${i+1}: ${NAMES[i]} → ${NAMES[i+1]} ${AMT[i]} BTC`);
+const short=h=>h.slice(0,6)+'…';
+const SVGNS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let n=8,orig=mkTx(8),texts=orig.slice(),sel=2;
+
+function build(tx){
+  const levels=[];let cur=tx.map((t,i)=>({h:sha256(t),label:'H'+(i+1),lo:i+1,hi:i+1,dup:false,leaf:true}));
+  while(true){
+    if(cur.length>1&&cur.length%2){const o=cur[cur.length-1];cur.push({h:o.h,label:T('copy'),lo:o.lo,hi:o.hi,dup:true,of:o});}
+    levels.push(cur);if(cur.length===1)break;
+    const nx=[];for(let i=0;i<cur.length;i+=2){const a=cur[i],b=cur[i+1];const hi=b.dup?a.hi:b.hi;
+      nx.push({h:sha256(a.h+b.h),lo:a.lo,hi,label:hi>a.lo?`H${a.lo}–${hi}`:`H${a.lo}+k`,kids:[a,b]});}
+    cur=nx;
+  }
+  levels[levels.length-1][0].label=T('root');
+  return levels;
+}
+function render(){
+  const lv=build(texts),ov=build(orig);const R=lv.length;
+  const W=n>8?86:104,RH=78,PAD=10,NW=W-12,NH=44;
+  lv.forEach((arr,L)=>arr.forEach((nd,i)=>{
+    if(L===0)nd.x=(i+.5)*W;else if(nd.kids)nd.x=(nd.kids[0].x+nd.kids[1].x)/2;
+    nd.y=PAD+(R-1-L)*RH;nd.L=L;nd.i=i;nd.chg=nd.h!==ov[L][i].h;}));
+  lv.forEach(arr=>arr.forEach((nd,i)=>{if(nd.dup&&nd.L>0)nd.x=arr[i-1].x+(arr[1].x-arr[0].x);}));
+  const pr=[];{let idx=sel;for(let L=0;L<R-1;L++){pr.push({L,idx,sib:lv[L][idx^1],left:idx%2===0});idx>>=1;}}
+  const pathSet=new Set(),proofSet=new Set();
+  {let idx=sel;for(let L=0;L<R;L++){pathSet.add(lv[L][idx]);idx>>=1;}}
+  pr.forEach(p=>{if(!pathSet.has(p.sib))proofSet.add(p.sib);});
+  const svg=$('tree');svg.innerHTML='';
+  const width=lv[0].length*W,height=PAD+(R-1)*RH+NH+30;
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('width',width);svg.setAttribute('height',height);
+  const el=(t,a,p)=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;};
+  lv.forEach(arr=>arr.forEach(nd=>{if(!nd.kids)return;nd.kids.forEach(k=>{
+    const pe=pathSet.has(nd)&&pathSet.has(k);
+    el('path',{class:'e'+(k.dup?' dupe':'')+(pe?' pe':''),d:`M${nd.x} ${nd.y+NH} C ${nd.x} ${nd.y+NH+18}, ${k.x} ${k.y-18}, ${k.x} ${k.y}`});});}));
+  lv.forEach(arr=>arr.forEach(nd=>{
+    let c='n';if(nd.dup)c+=' dup';if(nd.leaf&&!nd.dup)c+=' leaf';
+    if(pathSet.has(nd))c+=' path';else if(proofSet.has(nd))c+=' proof';
+    if(nd.chg)c+=' chg';
+    const g=el('g',{class:c});
+    el('rect',{x:nd.x-NW/2,y:nd.y,width:NW,height:NH,rx:7},g);
+    el('text',{x:nd.x,y:nd.y+18,'text-anchor':'middle',class:'lb'},g).textContent=nd.label;
+    el('text',{x:nd.x,y:nd.y+34,'text-anchor':'middle',class:'hs'},g).textContent=short(nd.h);
+    if(nd.leaf&&!nd.dup){
+      const i=nd.i;g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label',T('pick',i+1));
+      g.addEventListener('click',()=>{sel=i;render();});
+      g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sel=i;render();}});
+      el('text',{x:nd.x,y:nd.y+NH+18,'text-anchor':'middle',class:'txl'+(i===sel?' sel':'')},svg).textContent='Tx'+(i+1);
+    }
+  }));
+  const oroot=ov[R-1][0].h,nroot=lv[R-1][0].h;
+  $('hdr').innerHTML=T('hdr',oroot)+(nroot!==oroot?T('hdrNew',nroot):'');
+  const st=$('steps');st.innerHTML='';
+  $('ptitle').textContent=T('stepsT',sel+1);
+  let h=sha256(texts[sel]);
+  const li=html=>{const x=document.createElement('li');x.innerHTML=html;st.appendChild(x);};
+  li(T('step1',sel+1,esc(texts[sel]),short(h)));
+  pr.forEach((p,k)=>{
+    const sname=p.sib.dup?T('sibCopy',p.sib.of?p.sib.of.label:''):p.sib.label;
+    const nh=p.left?sha256(h+p.sib.h):sha256(p.sib.h+h);
+    const parent=lv[p.L+1][p.idx>>1];
+    li(T('stepN',k+2,sname,p.left,parent.label,p.left?'h ‖ '+short(p.sib.h):short(p.sib.h)+' ‖ h',short(nh)));
+    h=nh;
+  });
+  const v=$('verdict');
+  if(h===oroot){v.className='verdict ok';v.textContent=T('vOk',sel+1);}
+  else{v.className='verdict bad';v.textContent=T('vBad',short(h),short(oroot));}
+  const inp=$('txedit');if(document.activeElement!==inp)inp.value=texts[sel];
+  const ch=[];lv.forEach(a=>a.forEach(nd=>{if(nd.chg&&!nd.dup)ch.push(nd.label);}));
+  $('tamperinfo').innerHTML=ch.length?T('tChg',ch.length,ch.join(', ')):T('tNone');
+  $('cost').innerHTML=T('cost',n,pr.length);
+}
+$('txedit').addEventListener('input',e=>{texts[sel]=e.target.value;render();});
+$('reset').addEventListener('click',()=>{texts=orig.slice();render();});
+document.querySelectorAll('#nseg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#nseg button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');
+  n=+b.dataset.n;orig=mkTx(n);texts=orig.slice();sel=Math.min(2,n-1);render();}));
+
+function renderScale(){
+  const L=LOC();const f1=x=>x.toLocaleString(L,{maximumFractionDigits:1});
+  const fmt=b=>b>=1e9?f1(b/1e9)+' GB':b>=1e6?f1(b/1e6)+' MB':b>=1e3?f1(b/1e3)+' KB':b+' B';
+  const tb=$('scale');tb.innerHTML='';
+  [[8,''],[1024,''],[3000,T('typical')],[1e6,''],[1e9,'']].forEach(([m,t])=>{
+    const k=Math.ceil(Math.log2(m));const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${m.toLocaleString(L)}<span class="note">${t}</span></td><td class="hi">${k}</td><td>${fmt(k*32)}</td><td>${fmt(m*32)}</td><td>${Math.round(m/k).toLocaleString(L)}×</td>`;
+    tb.appendChild(tr);});
+}
+
+/* ---------- Real Bitcoin: Electrum JSON ---------- */
+const B100K_ROOT='f3e94742aca4b5ef85488dc37c06c3282295ffec960994b2c0d5ac2a25a95766';
+$('jtx').value='6359f0868171b1d194cbee1af2f16ea598ae8fad666d9b012c8ed2b79a236ec4';
+$('jjson').value=JSON.stringify({block_height:100000,pos:2,merkle:['e9a66845e05d5abc0ad04ec80f774a7e585c6e8db975962d069a522137b80c1d','ccdafb73d8dcd0173d5d5c3c9a0770d0b3953db889dab99ef05b1907518cb815']},null,2);
+$('jroot').value=B100K_ROOT;
+function renderJson(){
+  const st=$('jsteps'),v=$('jverdict');st.innerHTML='';
+  const li=h=>{const x=document.createElement('li');x.innerHTML=h;st.appendChild(x);};
+  try{
+    const j=JSON.parse($('jjson').value);const pos=+j.pos;const list=j.merkle;
+    if(!Array.isArray(list)||!(pos>=0))throw new Error('pos / merkle');
+    const tx=$('jtx').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(tx))throw new Error('txid');
+    let h=revU(fromHex(tx));li(T('jStart',short(tx)));
+    list.forEach((s,i)=>{const sib=revU(fromHex(s));if(sib.length!==32)throw new Error('hash '+(i+1));
+      const bit=(pos>>i)&1,left=bit===0;h=left?sha256d(cat(h,sib)):sha256d(cat(sib,h));
+      li(T('jStep',i+1,bit,left,short(s),short(toHex(revU(h)))));});
+    const root=toHex(revU(h));const want=$('jroot').value.trim().toLowerCase();
+    if(root===want){v.className='verdict ok';v.textContent=T('jOk');}else{v.className='verdict bad';v.textContent=T('jBad')+' ('+short(root)+' ≠ '+short(want)+')';}
+  }catch(e){v.className='verdict bad';v.textContent=T('jErr',e.message);}
+}
+['jtx','jjson','jroot'].forEach(id=>$(id).addEventListener('input',renderJson));
+
+/* ---------- Real Bitcoin: gettxoutproof hex ---------- */
+$('hexin').value='0100000050120119172a610421a6c3011dd330d9df07b63616c2cc1f1cd00200000000006657a9252aacd5c0b2940996ecff952228c3067cc38d4885efb5a4ac4247e9f337221b4d4c86041b0f2b5710040000000315b88c5107195bf09eb9da89b83d95b3d070079a3c5c5d3d17d0dcd873fbdaccc46e239ab7d28e2c019b6d66ad8fae98a56ef1f21aeecb94d1b1718186f059631d0cb83721529a062d9675b98d6e5c587e4a770fc84ed00abc5a5de04568a6e9010d';
+function readVarint(u,o){const b=u[o];if(b<0xfd)return[b,1];const dv=new DataView(u.buffer,u.byteOffset);if(b===0xfd)return[dv.getUint16(o+1,true),3];if(b===0xfe)return[dv.getUint32(o+1,true),5];throw new Error('varint')}
+function renderHex(){
+  const fields=$('fields'),trav=$('trav'),v=$('hverdict'),view=$('hexview');
+  fields.innerHTML='';trav.innerHTML='';view.innerHTML='';
+  $('hexlegend').innerHTML=[['sg-h','sgH'],['sg-n','sgN'],['sg-c','sgC'],['sg-x','sgX'],['sg-f','sgF']].map(([c,k])=>`<span><i class="tag ${c}">&nbsp;</i>${T(k)}</span>`).join('');
+  try{
+    const raw=$('hexin').value.trim().toLowerCase().replace(/\s+/g,'');
+    const u=fromHex(raw);if(u.length<85)throw new Error('< 85 B');
+    const dv=new DataView(u.buffer);
+    const hd=u.slice(0,80);
+    const ntx=dv.getUint32(80,true);
+    let o=84;const[hc,hl]=readVarint(u,o);const segs=[['sg-h',0,80],['sg-n',80,84],['sg-c',o,o+hl]];o+=hl;
+    const hashes=[];for(let i=0;i<hc;i++){if(o+32>u.length)throw new Error('hash '+(i+1));hashes.push(u.slice(o,o+32));segs.push([i%2?'sg-x2':'sg-x',o,o+32]);o+=32;}
+    const[fc,fl]=readVarint(u,o);segs.push(['sg-c',o,o+fl]);o+=fl;
+    const flagBytes=u.slice(o,o+fc);if(flagBytes.length<fc)throw new Error('flags');segs.push(['sg-f',o,o+fc]);o+=fc;
+    view.innerHTML=segs.map(([c,a,b])=>`<span class="${c}">${toHex(u.slice(a,b))}</span>`).join('');
+    const bits=[];flagBytes.forEach(b=>{for(let i=0;i<8;i++)bits.push((b>>i)&1);});
+    const hdv=new DataView(hd.buffer);
+    const rootHdr=toHex(revU(hd.slice(36,68)));
+    const time=hdv.getUint32(68,true);
+    const rows=[[T('fVer'),hdv.getUint32(0,true)],[T('fPrev'),toHex(revU(hd.slice(4,36)))],[T('fRoot'),rootHdr],[T('fTime'),`${time} → ${new Date(time*1000).toISOString().replace('T',' ').slice(0,19)} UTC`],[T('fBits'),'0x'+hdv.getUint32(72,true).toString(16).padStart(8,'0')],[T('fNonce'),hdv.getUint32(76,true).toLocaleString(LOC())],[T('fHash'),toHex(revU(sha256d(hd)))],[T('fNtx'),ntx],[T('fHc'),hc],[T('fFl'),T('flBits',bits.slice(0,Math.max(1,bits.length)).join(''),toHex(flagBytes))]];
+    fields.innerHTML=rows.map(([k,val])=>`<tr><td>${k}</td><td class="mono">${esc(val)}</td></tr>`).join('');
+    // traverse (Bitcoin Core CPartialMerkleTree::TraverseAndExtract)
+    const width=h=>(ntx+(1<<h)-1)>>h;let height=0;while(width(height)>1)height++;
+    let bu=0,hu=0;const matched=[];const li=(html,depth)=>{const x=document.createElement('li');x.style.marginLeft=(depth*18)+'px';x.innerHTML=html;trav.appendChild(x);};
+    const walk=(h,p,depth)=>{
+      if(bu>=bits.length)throw new Error('bits');const f=bits[bu++];const name=h===height?T('root'):T('nodeName',h,p);
+      if(h===0||!f){if(hu>=hashes.length)throw new Error('hashes');const hh=hashes[hu++];const disp=short(toHex(revU(hh)));
+        if(h===0&&f){matched.push(toHex(revU(hh)));li(T('tvMatch',name,disp),depth);}else li(T('tvHash',name,f,disp),depth);return hh;}
+      li(T('tvIn',name,f),depth);
+      const L=walk(h-1,p*2,depth+1);let Rr;
+      if(p*2+1<width(h-1))Rr=walk(h-1,p*2+1,depth+1);else{Rr=L;li(T('tvDup',T('nodeName',h-1,p*2+1)),depth+1);}
+      const out=sha256d(cat(L,Rr));li(T('tvCombine',name,short(toHex(revU(out)))),depth);return out;};
+    const root=toHex(revU(walk(height,0,0)));
+    if(root===rootHdr){v.className='verdict ok';v.textContent=T('hOk',matched.join(', '));}else{v.className='verdict bad';v.textContent=T('hBad')+' ('+short(root)+' ≠ '+short(rootHdr)+')';}
+  }catch(e){v.className='verdict bad';v.textContent=T('hErr',e.message);}
+}
+$('hexin').addEventListener('input',renderHex);
+
+/* ---------- exercises ---------- */
+function renderEx(){
+  const box=$('exercises');box.innerHTML='';
+  EXS[lang].forEach((x,i)=>{
+    const d=document.createElement('div');d.className='ex';
+    d.innerHTML=`<div class="q">${i+1}. ${x.q}</div><div class="row"></div><div class="fb" aria-live="polite"></div><div class="sol" hidden>${x.sol}</div>`;
+    const row=d.querySelector('.row'),fb=d.querySelector('.fb'),sol=d.querySelector('.sol');
+    if(x.type==='choice'){x.choices.forEach((c,j)=>{const b=document.createElement('button');b.className='choice';b.textContent=c;
+      b.onclick=()=>{row.querySelectorAll('.choice').forEach(z=>z.classList.remove('right','wrong'));
+        if(j===x.ans){b.classList.add('right');fb.className='fb ok';fb.textContent=T('right');sol.hidden=false;}
+        else{b.classList.add('wrong');fb.className='fb bad';fb.textContent=T('wrong');}};row.appendChild(b);});}
+    else{const inp=document.createElement('input');inp.type='text';inp.inputMode='numeric';inp.id='ex'+i;inp.setAttribute('aria-label',T('ansL')+' '+(i+1));
+      const b=document.createElement('button');b.className='btn';b.textContent=T('check');
+      const check=()=>{if(inp.value.trim()===''){fb.className='fb bad';fb.textContent=T('empty');return;}
+        const v=Number(inp.value.replace(/[.,\s]/g,''));
+        if(v===x.ans){fb.className='fb ok';fb.textContent=T('right');sol.hidden=false;}else{fb.className='fb bad';fb.textContent=T('wrong');}};
+      b.onclick=check;inp.addEventListener('keydown',e=>{if(e.key==='Enter')check();});row.append(inp,b);}
+    const s=document.createElement('button');s.className='btn';s.textContent=T('showSol');s.onclick=()=>{sol.hidden=false;};row.appendChild(s);
+    box.appendChild(d);});
+}
+
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll('[data-i18n]').forEach(e=>{e.innerHTML=T(e.dataset.i18n);});
+  document.querySelectorAll('#langseg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===lang)));
+  render();renderScale();renderJson();renderHex();renderEx();
+}
+document.querySelectorAll('#langseg button').forEach(b=>b.addEventListener('click',()=>{lang=b.dataset.lang;try{localStorage.setItem('merkle-lang',lang);}catch(e){}applyLang();}));
+applyLang();
+</script>
+
+</body></html>
