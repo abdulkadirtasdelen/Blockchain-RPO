@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Uzlaşma Blok Atlası</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a single long ledger. Each mechanism is one "block" of the page: animated stage + block anatomy + a chain strip that keeps growing; the feed loops forever. */
+:root{
+  --bg:#eef2f5; --surface:#ffffff; --surface2:#e4eaef; --ink:#0f2433; --muted:#566b7a; --line:#c9d4dc;
+  --cyan:#1386c4; --cyan-soft:#d6ebf6; --amber:#d98a00; --amber-soft:#fbecc9; --good:#1f8a5b; --bad:#c8433a;
+  --f-disp:"Archivo","IBM Plex Sans",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b1820; --surface:#11232e; --surface2:#183140; --ink:#e2edf3; --muted:#8fa6b4; --line:#26404f;
+  --cyan:#4fb6ea; --cyan-soft:#143a50; --amber:#f2b33d; --amber-soft:#3d3115; --good:#45c08a; --bad:#ef6b61; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1820; --surface:#11232e; --surface2:#183140; --ink:#e2edf3; --muted:#8fa6b4; --line:#26404f;
+  --cyan:#4fb6ea; --cyan-soft:#143a50; --amber:#f2b33d; --amber-soft:#3d3115; --good:#45c08a; --bad:#ef6b61; color-scheme:dark}
+
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.bar-in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.brand{font-family:var(--f-disp);font-weight:800;font-stretch:112%;letter-spacing:.02em;font-size:15px;white-space:nowrap;text-transform:uppercase}
+.brand span{color:var(--cyan)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;padding-block:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{font-family:var(--f-mono);font-size:12px;padding:4px 9px;border:1px solid var(--line);border-radius:4px;text-decoration:none;color:var(--muted);white-space:nowrap}
+.chip:hover{color:var(--ink);border-color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ctl{display:flex;gap:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:5px 10px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn[aria-pressed="true"]{background:var(--cyan-soft);border-color:var(--cyan)}
+select.btn{padding-right:6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:500 12.5px var(--f-mono);background:var(--surface);color:var(--muted);border:0;padding:5px 9px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 60px}
+.inner{max-width:1240px;margin:0 auto}
+
+.intro{padding-block:44px 28px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:32px;align-items:end}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-disp);font-weight:800;font-stretch:112%;font-size:clamp(30px,4.6vw,54px);line-height:1.02;margin:10px 0 14px;text-wrap:balance;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--cyan)}
+.intro p{margin:0;max-width:62ch;color:var(--muted)}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;font-size:13px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:14px 16px}
+.legend b{font-family:var(--f-mono);font-weight:500;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);grid-column:1/-1}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+
+.mech{border-top:2px solid var(--ink);padding-block:26px 34px;scroll-margin-top:70px}
+.mhead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 28px;align-items:end;margin-bottom:18px}
+.tag{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+.tag b{color:var(--cyan);font-weight:500}
+h2{font-family:var(--f-disp);font-weight:800;font-stretch:112%;font-size:clamp(24px,3.2vw,36px);line-height:1.05;margin:4px 0 6px;text-wrap:balance}
+h2 .ab{color:var(--cyan)}
+h2 .tr{display:block;font-family:var(--f-body);font-weight:500;font-stretch:100%;font-size:16px;color:var(--muted);margin-top:4px}
+.proof{margin:0;font-size:15px}
+.proof b{font-weight:600}
+.meta{display:grid;grid-template-columns:repeat(3,minmax(0,auto));gap:0;margin:0;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.meta div{padding:8px 14px;border-left:1px solid var(--line);min-width:0}
+.meta div:first-child{border-left:0}
+.meta dt{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.meta dd{margin:2px 0 0;font-size:13.5px;font-weight:500}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:18px;align-items:start}
+.stage{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.stage canvas{display:block;width:100%;height:360px}
+.cap{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);font-size:13.5px}
+.cap .now{min-width:0}
+.cap .now b{font-family:var(--f-mono);font-weight:500;color:var(--cyan);margin-right:8px}
+.cap .btns{display:flex;gap:6px;flex-shrink:0}
+.steps{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:4px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:28px minmax(0,1fr);gap:0 8px;padding:7px 10px;border-radius:5px;position:relative;cursor:pointer}
+.steps li::before{content:counter(s);font-family:var(--f-mono);font-size:12px;color:var(--muted);grid-row:1/3;padding-top:2px}
+.steps li b{font-weight:500;font-size:14px}
+.steps li span{display:none;font-size:13.5px;color:var(--muted);grid-column:2}
+.steps li.on{background:var(--surface)}
+.steps li.on::before{color:var(--cyan)}
+.steps li.on b{font-weight:600}
+.steps li.on span{display:block}
+.steps li.done b{color:var(--muted)}
+.steps .pg{position:absolute;left:10px;right:10px;bottom:0;height:2px;background:var(--cyan);transform-origin:left;transform:scaleX(0)}
+.steps li:not(.on) .pg{display:none}
+
+.block{background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.bh{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.bh strong{font-family:var(--f-disp);font-weight:800;font-stretch:112%;font-size:18px;font-variant-numeric:tabular-nums}
+.bh small{font-size:12px;color:var(--muted)}
+.part{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:5px 14px}
+.row{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr);gap:0 10px;padding:7px 14px;border-top:1px solid var(--line);transition:background .25s}
+.part+.row{border-top:0}
+.row .k{font-family:var(--f-mono);font-size:12px;color:var(--ink);overflow-wrap:anywhere}
+.row .v{font-family:var(--f-mono);font-size:12px;color:var(--cyan);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.row .n{grid-column:1/-1;font-size:12.5px;color:var(--muted);line-height:1.4;margin-top:2px}
+.row.hl{background:var(--amber-soft)}
+.row.hl .v{color:var(--ink)}
+.row.flash .v{animation:fl 1s ease}
+@keyframes fl{0%{background:var(--amber-soft)}100%{background:transparent}}
+
+.chainwrap{margin-top:18px}
+.chainlbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;gap:10px}
+.chain{display:flex;gap:0;overflow:hidden;justify-content:flex-end;padding-block:2px;mask-image:linear-gradient(90deg,transparent,#000 12%)}
+.mini{flex:0 0 auto;display:flex;align-items:center}
+.mini .lk{width:22px;height:2px;background:var(--line);position:relative}
+.mini .lk::before{content:"";position:absolute;left:-1px;top:-3px;border:4px solid transparent;border-right-color:var(--line);border-left:0}
+.mini .bx{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:6px 10px;min-width:118px}
+.mini .bx .h{font-family:var(--f-mono);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums}
+.mini .bx .x{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.mini .bx .p{font-size:11.5px;color:var(--muted)}
+.mini.new .bx{border-color:var(--amber);background:var(--amber-soft)}
+.mini.enter{animation:slin .6s cubic-bezier(.2,.8,.2,1)}
+@keyframes slin{from{transform:translateX(60px);opacity:0}to{transform:none;opacity:1}}
+
+.loop{margin-block:10px 0;padding:22px 0;border-top:2px dashed var(--line);text-align:center;font-family:var(--f-mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+.loop b{color:var(--cyan);font-weight:500}
+.note{font-size:12.5px;color:var(--muted);margin-top:24px}
+
+@media (max-width:920px){
+  .intro{grid-template-columns:minmax(0,1fr);gap:20px}
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .mhead{grid-template-columns:minmax(0,1fr)}
+  .meta{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .stage canvas{height:300px}
+  .meta{grid-template-columns:minmax(0,1fr)}
+  .meta div{border-left:0;border-top:1px solid var(--line)}
+  .meta div:first-child{border-top:0}
+  .bar-in{flex-wrap:wrap;row-gap:8px}
+  .mech{scroll-margin-top:140px}
+  .chips{order:3;flex-basis:100%}
+  .brand{margin-right:auto}
+  .ctl{flex-basis:100%}
+  .ctl .btn#gplay{flex:1}
+  .cap{flex-direction:column;align-items:stretch}
+  .row{grid-template-columns:minmax(0,1fr)}
+  .legend{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){.mini.enter,.row.flash .v{animation:none}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand" data-i18n="brand"></div>
+    <nav class="chips" id="chips" aria-label="Mechanisms / Mekanizmalar"></nav>
+    <div class="ctl">
+      <div class="seg" id="langseg" role="group" aria-label="Language / Dil">
+        <button type="button" data-lang="tr" aria-pressed="true">TR</button><button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <button class="btn" id="gplay" type="button" aria-pressed="false"></button>
+      <select class="btn" id="speed" aria-label="Speed / Hız">
+        <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="inner">
+    <section class="intro">
+      <div>
+        <div class="eyebrow" data-i18n="eyebrow"></div>
+        <h1 data-i18n="h1"></h1>
+        <p data-i18n="intro"></p>
+      </div>
+      <div class="legend">
+        <b data-i18n="lgH"></b>
+        <div><i class="sw" style="background:var(--cyan)"></i><span data-i18n="lg1"></span></div>
+        <div><i class="sw" style="background:var(--amber)"></i><span data-i18n="lg2"></span></div>
+        <div><i class="sw" style="background:var(--good)"></i><span data-i18n="lg3"></span></div>
+        <div><i class="sw" style="background:var(--bad)"></i><span data-i18n="lg4"></span></div>
+      </div>
+    </section>
+    <div id="feed"></div>
+    <div class="loop" id="sentinel"></div>
+    <p class="note" data-i18n="note"></p>
+  </div>
+</main>
+
+<script>
+(()=>{
+/* ---------- language ---------- */
+let lang='tr';try{const s=localStorage.getItem('atlas-lang');if(s==='en'||s==='tr')lang=s}catch(e){}
+const L=(tr,en)=>lang==='en'?en:tr;
+const B=(tr,en)=>({tr,en});
+const X=v=>v&&typeof v==='object'&&'tr' in v?v[lang]:v;
+const UI={
+ brand:B('Uzlaşma <span>Blok Atlası</span>','Consensus <span>Block Atlas</span>'),
+ eyebrow:B('SENG433 · Hafta 4 · Uzlaşma Mekanizmaları','SENG433 · Week 4 · Consensus Mechanisms'),
+ h1:B('Bir blok zincire <em>nasıl</em> eklenir?','<em>How</em> does a block join the chain?'),
+ intro:B('Her bölüm bir uzlaşma mekanizmasını canlı çalıştırır. Solda bloğun eklenme akışı adım adım oynar, sağda o mekanizmaya ait bloğun alanları görünür ve o adımda değişen alanlar vurgulanır. Altındaki şerit, eklenen her blokla uzar. Sayfa sonuna geldiğinizde zincir yeni bir turla devam eder.',
+   'Each section runs one consensus mechanism live. On the left, the block-append workflow plays step by step; on the right, you see the fields of that mechanism’s block, with the fields touched in the current step highlighted. The strip below grows with every appended block. When you reach the end of the page, the chain continues with a new round.'),
+ lgH:B('Renk anahtarı','Colour key'),lg1:B('Mesaj, işlem, akış','Message, transaction, flow'),lg2:B('Seçilen / kazanan','Selected / winner'),lg3:B('Onay, doğrulama','Confirmation, validation'),lg4:B('Hatalı ya da reddedilen','Faulty or rejected'),
+ note:B('Blok numaraları, hash’ler ve adresler eğitim amaçlı örnek değerlerdir. Akışlar sadeleştirilmiştir; ayrıntılar için haftanın okuması: Zhang &amp; Lee (2019), ICT Express.',
+   'Block numbers, hashes and addresses are example values for teaching. Workflows are simplified; for details see this week’s reading: Zhang &amp; Lee (2019), ICT Express.'),
+ pauseAll:B('Tümünü duraklat','Pause all'),playAll:B('Tümünü oynat','Play all'),
+ pause:B('Duraklat','Pause'),play:B('Oynat','Play'),prev:B('Önceki adım','Previous step'),next:B('Sonraki adım','Next step'),
+ round:B('tur','round'),proof:B('Kanıt =','Proof ='),head:B('Başlık · header','Header'),body:B('Gövde · body','Body'),
+ chainB:B('Zincir · eklenen bloklar','Chain · appended blocks'),chainT:B('Zincir · onaylanan işlemler','Tangle · attached transactions'),
+ added:B('bu bölümde +','+'),addedSfx:B('',' in this section'),anim:B('blok ekleme animasyonu','block-append animation'),
+ loop:B('Zincir devam ediyor · <b>tur {n} yükleniyor</b>','The chain continues · <b>loading round {n}</b>'),
+ title:B('Uzlaşma Blok Atlası','Consensus Block Atlas')
+};
+const U=k=>X(UI[k]);
+
+const TAU=Math.PI*2;
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const HEX='0123456789abcdef', B58='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const hex=n=>{let s='';for(let i=0;i<n;i++)s+=HEX[Math.random()*16|0];return s};
+const b58=n=>{let s='';for(let i=0;i<n;i++)s+=B58[Math.random()*58|0];return s};
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+function hi(n){n=(n^61)^(n>>>16);n=Math.imul(n,0x27d4eb2d);n^=n>>>15;return n>>>0}
+const hx=(seed,len)=>{let s='',x=seed>>>0;for(let i=0;i<len;i++){x=hi(x+i*7919+1);s+=HEX[x&15]}return s};
+const short=h=>h.length>14?h.slice(0,8)+'…'+h.slice(-4):h;
+const nf=n=>Number(n).toLocaleString(lang==='en'?'en-US':'tr-TR');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- theme colors for canvas ---------- */
+let C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);
+  for(const k of ['bg','surface','surface2','ink','muted','line','cyan','cyan-soft','amber','amber-soft','good','bad'])
+    C[k.replace('-soft','Soft')]=cs.getPropertyValue('--'+k).trim();}
+readColors();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readColors);
+new MutationObserver(readColors).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class','style']});
+
+/* ---------- drawing helpers ---------- */
+const FAM={sans:'"IBM Plex Sans", system-ui, sans-serif',mono:'"IBM Plex Mono", ui-monospace, monospace',disp:'"Archivo", "IBM Plex Sans", sans-serif'};
+function mk(ctx){
+  const rr=(x,y,w,h,r)=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h)};
+  const D={
+    ctx,
+    circle(x,y,r,fill,stroke,lw=1.5){ctx.beginPath();ctx.arc(x,y,Math.max(r,0),0,TAU);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}},
+    rect(x,y,w,h,r,fill,stroke,lw=1.5,dash){rr(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.setLineDash(dash||[]);ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();ctx.setLineDash([])}},
+    text(s,x,y,o={}){ctx.font=`${o.weight||500} ${o.size||12}px ${FAM[o.fam||'sans']}`;ctx.fillStyle=o.color||C.ink;ctx.textAlign=o.align||'center';ctx.textBaseline=o.base||'middle';if(o.alpha!=null)ctx.globalAlpha=o.alpha;ctx.fillText(s,x,y);ctx.globalAlpha=1},
+    line(x1,y1,x2,y2,color,lw=1,dash){ctx.beginPath();ctx.setLineDash(dash||[]);ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke();ctx.setLineDash([])},
+    arrow(x1,y1,x2,y2,color,lw=1.5,hd=7,dash){D.line(x1,y1,x2,y2,color,lw,dash);const a=Math.atan2(y2-y1,x2-x1);ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hd*Math.cos(a-.42),y2-hd*Math.sin(a-.42));ctx.lineTo(x2-hd*Math.cos(a+.42),y2-hd*Math.sin(a+.42));ctx.closePath();ctx.fillStyle=color;ctx.fill()},
+    partial(x1,y1,x2,y2,t,color,lw=1.5,dash){if(t<=0)return;const e=clamp(t);const x=lerp(x1,x2,e),y=lerp(y1,y2,e);if(e>=1)D.arrow(x1,y1,x2,y2,color,lw,6,dash);else{D.line(x1,y1,x,y,color,lw,dash);D.circle(x,y,3.6,color)}},
+    packet(x1,y1,x2,y2,t,color,r=4){if(t<=0||t>=1)return;const e=ease(t);D.circle(lerp(x1,x2,e),lerp(y1,y2,e),r,color)},
+    check(x,y,sz,color){ctx.beginPath();ctx.moveTo(x-sz*.5,y);ctx.lineTo(x-sz*.12,y+sz*.4);ctx.lineTo(x+sz*.55,y-sz*.42);ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();ctx.lineCap='butt'},
+    cross(x,y,sz,color){D.line(x-sz/2,y-sz/2,x+sz/2,y+sz/2,color,2);D.line(x+sz/2,y-sz/2,x-sz/2,y+sz/2,color,2)},
+    alpha(a,fn){const p=ctx.globalAlpha;ctx.globalAlpha=a;fn();ctx.globalAlpha=p},
+    blockGlyph(x,y,sz,fill,stroke,label){D.rect(x-sz,y-sz*.7,sz*2,sz*1.4,3,fill,stroke,1.5);D.line(x-sz,y-sz*.25,x+sz,y-sz*.25,stroke,1);if(label)D.text(label,x,y+sz*.2,{size:Math.max(9,sz*.55),fam:'mono',color:C.ink})}
+  };
+  return D;
+}
+const stag=(t,i,n,span=.55)=>clamp((t-(i/n)*(1-span))/span);
+const S=(t,d,dur,hl)=>({t,d,dur,hl});
+
+/* ---------- mechanisms ---------- */
+const MECHS=[
+/* ======================= PoW ======================= */
+{id:'pow',ab:'PoW',name:'Proof of Work',tr:B('İş İspatı','TR: İş İspatı'),proof:B('“Hesaplama işi yaptım.”','“I have done computational work.”'),
+ meta:[[B('Blok süresi','Block time'),B('~10 dk','~10 min')],[B('Kesinlik','Finality'),B('Olasılıksal · ~6 onay','Probabilistic · ~6 confirmations')],[B('Örnek','Examples'),'Bitcoin, Litecoin']],
+ unit:B('Blok','Block'),start:970412,struct:B('Bitcoin blok başlığı · 80 bayt','Bitcoin block header · 80 bytes'),dt:600,
+ steps:[
+  S(B('İşlemler mempool’a düşer','Transactions enter the mempool'),B('İmzalı işlemler ağa yayılır ve her düğümün bekleme havuzunda (mempool) toplanır.','Signed transactions spread across the network and collect in each node’s waiting pool (mempool).'),1800,['txs']),
+  S(B('Aday blok hazırlanır','Candidate block is assembled'),B('Her madenci ücreti yüksek işlemleri seçer, Merkle kökünü hesaplar, önceki bloğun hash’ini ve zaman damgasını başlığa yazar.','Each miner picks high-fee transactions, computes the Merkle root, and writes the previous block hash and timestamp into the header.'),2100,['merkle','prev','time']),
+  S(B('Nonce aranır','Nonce search'),B('Madenciler nonce’u değiştirip 80 baytlık başlığı SHA-256d ile tekrar tekrar özetler. Sonuç hedefin (target) altında olmalı.','Miners change the nonce and hash the 80-byte header with SHA-256d again and again. The result must fall below the target.'),3300,['nonce','bits']),
+  S(B('Geçerli hash bulunur','A valid hash is found'),B('Bir madencinin hash’i hedefin altına iner. Bulmak milyarlarca deneme ister, kontrol etmek tek bir hash.','One miner’s hash drops below the target. Finding it takes billions of tries; checking it takes a single hash.'),1700,['nonce','hash']),
+  S(B('Blok yayılır ve doğrulanır','Block propagates and is verified'),B('Diğer düğümler hash’i, işlemleri ve imzaları kontrol eder. Geçerliyse kabul eder, kendi aramalarını bırakıp yeni bloğun üzerine geçerler.','Other nodes check the hash, transactions and signatures. If valid, they accept it, stop their own search and build on the new block.'),2100,['txs','coinbase']),
+  S(B('Zincire eklenir','Appended to the chain'),B('Çatal seçimi: en çok birikmiş işe sahip zincir. Üzerine gelen her blok bir onaydır; ~6 onay pratik kesinlik sayılır.','Fork choice: the chain with the most cumulative work. Every block on top is one confirmation; ~6 confirmations count as practical finality.'),1800,['prev','hash'])],
+ init(){const r=Math.random();return{win:r<.36?0:r<.66?1:r<.9?2:3,hash:'0000000000000000000'+hex(45),nonce:ri(1e8,4.2e9),merkle:hex(64),txs:ri(2600,4300),fee:(0.015+Math.random()*.12)}},
+ producer:c=>[L('Havuz A','Pool A'),L('Havuz B','Pool B'),L('Havuz C','Pool C'),L('Solo madenci','Solo miner')][c.win],
+ fields(c,I,h){const fee=c.fee.toFixed(3);return{head:[
+   ['ver','version','0x20000000',L('Sürüm ve soft-fork sinyal bitleri','Version and soft-fork signalling bits')],
+   ['prev','prev_block_hash',I.prev,L('Önceki bloğun hash’i; zinciri birbirine bağlar','Hash of the previous block; links the chain together')],
+   ['merkle','merkle_root',c.merkle,L('Bloktaki tüm işlemlerin Merkle kökü','Merkle root of all transactions in the block')],
+   ['time','timestamp',String(I.ts),L('Unix zaman damgası (saniye)','Unix timestamp (seconds)')],
+   ['bits','bits','0x17022f6b',L('Zorluk hedefinin (target) sıkıştırılmış hali; 2016 blokta bir ayarlanır','Compact form of the difficulty target; retargeted every 2016 blocks')],
+   ['nonce','nonce',nf(c.nonce),L('Madencinin değiştirdiği 32 bitlik sayı (number used once)','32-bit number the miner varies (number used once)')],
+   ['hash','block hash',c.hash,L('Başlığın SHA-256d özeti; baştaki sıfırlar = hedefin altında','SHA-256d of the header; leading zeros = below target')]],
+  body:[['coinbase','coinbase tx',L('3,125 BTC + '+fee.replace('.',',')+' BTC ücret','3.125 BTC + '+fee+' BTC fees'),L('Blok ödülü (2024 halving sonrası) ve işlem ücretleri','Block subsidy (after the 2024 halving) plus fees')],
+   ['txs','transactions',nf(c.txs)+L(' işlem',' txs'),L('Mempool’dan seçilen işlemler','Transactions selected from the mempool')]]}},
+ draw(g){const{D,w,h,s,step,t,c,clock}=g;const fs=Math.max(10,12*s);
+  const mx=w*.03,mw=w*.16,my=h*.2,mh=h*.64;
+  D.rect(mx,my,mw,mh,6,C.surface2,C.line,1);D.text('Mempool',mx+mw/2,my-12,{size:fs,weight:600,color:C.muted});
+  for(let i=0;i<18;i++){const col=i%3,row=i/3|0;const px=mx+mw*(.22+.28*col),py=my+mh*(.1+row*.16);
+    let a=1,x=px;if(step===0){const k=stag(t,i,18,.4);x=lerp(-10,px,ease(k));a=k>0?1:0}
+    const sel=step>=1&&i<12;D.alpha(a,()=>D.circle(x,py,4.2*s+1,sel?C.cyan:C.muted))}
+  const names=[L('Havuz A','Pool A'),L('Havuz B','Pool B'),L('Havuz C','Pool C'),L('Solo madenci','Solo miner')];
+  const bx=w*.29,bw=w*.38,bh=h*.15;
+  D.text(L('Hedef','Target')+': hash < 0x0000000000000000000222f6b…',bx+bw/2,h*.07,{size:fs*.92,fam:'mono',color:step>=2?C.ink:C.muted});
+  for(let i=0;i<4;i++){const y=h*(.16+i*.2);const winner=step>=3&&i===c.win;
+    D.rect(bx,y,bw,bh,5,winner?C.amberSoft:C.surface,winner?C.amber:C.line,winner?2:1);
+    D.text(names[i],bx+10,y+bh*.3,{size:fs,weight:600,align:'left'});
+    if(step===1){D.packet(mx+mw,my+mh/2,bx,y+bh/2,stag(t,i,4),C.cyan,3.5);D.rect(bx+10,y+bh*.62,(bw-20)*ease(t),4,2,C.cyan)}
+    if(step>=2){const searching=step===2||(step===3&&!winner);
+      if(winner){D.text('nonce '+nf(c.nonce),bx+10,y+bh*.72,{size:fs*.88,fam:'mono',align:'left'});
+        D.text('0000000000…'+c.hash.slice(-6),bx+bw-28,y+bh*.72,{size:fs*.88,fam:'mono',align:'right',color:C.good});D.check(bx+bw-13,y+bh*.72,10,C.good)}
+      else if(searching){const k=Math.floor(clock/45)+i*997;D.text('nonce '+nf(hi(k)%4e9),bx+10,y+bh*.72,{size:fs*.88,fam:'mono',align:'left',color:C.muted});
+        D.text(hx(k,10)+'…',bx+bw-28,y+bh*.72,{size:fs*.88,fam:'mono',align:'right',color:C.muted});D.cross(bx+bw-13,y+bh*.72,8,C.bad)}
+      else D.text(L('yeni blok üzerine geçti','moved on to the new block'),bx+10,y+bh*.72,{size:fs*.88,align:'left',color:C.muted})}}
+  const nx=w*.87,nodes=[.3,.5,.7];
+  D.text(L('Ağ düğümleri','Network nodes'),nx,h*.16,{size:fs,weight:600,color:C.muted});
+  nodes.forEach((ny,j)=>{const y=h*ny;const ok=step>4||(step===4&&stag(t,j,3)>=1);D.circle(nx,y,11*s+3,C.surface,ok?C.good:C.line,2);if(ok)D.check(nx,y,9,C.good);
+    if(step===4){const wy=h*(.16+c.win*.2)+bh/2;D.packet(bx+bw,wy,nx-14,y,stag(t,j,3),C.cyan,4)}});
+  if(step===5){const wy=h*(.16+c.win*.2)+bh/2;const e=ease(t);D.blockGlyph(lerp(bx+bw/2,w*.87,e),lerp(wy,h*.9,e),13*s+3,C.amberSoft,C.amber,'#');
+    D.text(L('+1 onay','+1 confirmation'),w*.87,h*.9-26*s,{size:fs,color:C.good,alpha:t})}}
+},
+/* ======================= PoS ======================= */
+{id:'pos',ab:'PoS',name:'Proof of Stake',tr:B('Hisse (Pay) İspatı','TR: Hisse (Pay) İspatı'),proof:B('“Varlıklarımı kilitledim; hile yaparsam kaybederim.”','“I have locked my assets; if I cheat, I lose them.”'),
+ meta:[[B('Blok süresi','Block time'),B('12 s (slot)','12 s (slot)')],[B('Kesinlik','Finality'),B('~12,8 dk · 2 epoch','~12.8 min · 2 epochs')],[B('Örnek','Examples'),'Ethereum, Cardano']],
+ unit:'Slot',start:15512040,struct:B('Ethereum işaret (beacon) bloğu','Ethereum beacon block'),dt:12,
+ steps:[
+  S(B('Teminat kilitlenir','Stake is locked'),B('Doğrulayıcılar (validators) en az 32 ETH kilitler. Etkin teminat ne kadar büyükse seçilme olasılığı o kadar yüksek.','Validators lock at least 32 ETH. The larger the effective balance, the higher the chance of being selected.'),1700,[]),
+  S(B('Önerici seçilir (RANDAO)','Proposer is selected (RANDAO)'),B('Her 12 saniyelik slot için önerici, RANDAO rastgeleliği ve teminat ağırlığıyla seçilir. Herkes sonucu önceden hesaplayabilir.','For every 12-second slot, the proposer is chosen using RANDAO randomness weighted by stake. Anyone can compute the result in advance.'),2600,['prop','randao']),
+  S(B('Blok önerilir','Block is proposed'),B('Seçilen doğrulayıcı işlemleri (execution payload) toplar, bloğu oluşturur ve BLS anahtarıyla imzalar.','The chosen validator gathers transactions (execution payload), builds the block and signs it with its BLS key.'),1900,['parent','state','payload','sig']),
+  S(B('Komite oy verir (attestation)','Committee attests'),B('Bu slotun komitesi bloğu doğrulayıp oy gönderir. Oylar birleştirilerek bir sonraki bloğa eklenir.','The slot’s committee validates the block and sends votes. The votes are aggregated and included in a later block.'),2400,['att']),
+  S(B('Zincire eklenir (LMD-GHOST)','Appended (LMD-GHOST)'),B('Çatal seçimi: en çok güncel oy alan dal kazanır. Çift imza gibi kural ihlali slashing ile teminattan kesilir.','Fork choice: the branch with the most recent votes wins. Rule violations such as double signing are punished by slashing the stake.'),1800,['parent']),
+  S(B('Kesinlik (Casper FFG)','Finality (Casper FFG)'),B('Epoch kontrol noktaları 2/3 oyla önce doğrulanır (justified), bir sonraki epoch’ta kesinleşir (finalized). Toplam ~2 epoch ≈ 12,8 dk.','Epoch checkpoints are first justified with a 2/3 vote and finalized in the next epoch. In total ~2 epochs ≈ 12.8 min.'),2300,[])],
+ init(){const committee=[];const prop=ri(0,11);for(let i=0;i<12;i++)if(i!==prop&&Math.random()<.85)committee.push(i);return{prop,committee,spins:ri(2,3),hash:hex(64),state:hex(64),txs:ri(140,320),pidx:ri(10000,1150000),randao:hex(24),sig:hex(24)}},
+ producer:c=>L('doğrulayıcı #','validator #')+nf(c.pidx),
+ mem(){return{stakes:Array.from({length:12},()=>[32,32,64,96,512,2048,32,160,32,1024,32,256][ri(0,11)])}},
+ fields(c,I,h){return{head:[
+   ['slot','slot',nf(h),L('12 saniyelik zaman dilimi; 32 slot = 1 epoch','12-second time slot; 32 slots = 1 epoch')],
+   ['prop','proposer_index',nf(c.pidx),L('RANDAO ile seçilen önericinin indeksi','Index of the proposer chosen via RANDAO')],
+   ['parent','parent_root',I.prev,L('Önceki bloğun kökü (hash)','Root (hash) of the previous block')],
+   ['state','state_root',c.state,L('Blok uygulandıktan sonraki durumun kökü','Root of the state after applying the block')]],
+  body:[['randao','randao_reveal','0x'+c.randao+'…',L('Rastgeleliğe katkı (BLS imzası, 96 B)','Contribution to randomness (BLS signature, 96 B)')],
+   ['att','attestations',c.committee.length+L(' komite oyu (birleştirilmiş)',' committee votes (aggregated)'),L('Doğrulayıcıların bloğa ve kontrol noktalarına oyları','Validator votes on the block and on checkpoints')],
+   ['payload','execution_payload',c.txs+L(' işlem',' txs'),L('Yürütme katmanı (EL) bloğu: işlemler, gas, durum','Execution-layer (EL) block: transactions, gas, state')],
+   ['sig','signature','0x'+c.sig+'…',L('Önericinin BLS imzası','Proposer’s BLS signature')]]}},
+ draw(g){const{D,w,h,s,step,t,c,m}=g;const fs=Math.max(10,12*s);
+  const cx=w*.25,cy=h*.5,R=Math.min(w*.18,h*.33);
+  D.circle(cx,cy,R,null,C.line,1);D.text(step===1?'RANDAO':L('Teminat havuzu','Stake pool'),cx,cy-6,{size:fs,weight:600,color:C.muted});D.text('min 32 ETH',cx,cy+10,{size:fs*.9,fam:'mono',color:C.muted});
+  let hiIdx=-1;if(step===1){hiIdx=Math.floor(ease(t)*(c.spins*12+c.prop))%12;if(t>=1)hiIdx=c.prop}
+  const pos=i=>{const a=i/12*TAU-Math.PI/2;return[cx+Math.cos(a)*R,cy+Math.sin(a)*R]};
+  if(hiIdx>=0){const[x,y]=pos(hiIdx);D.line(cx,cy,x,y,C.amber,2)}
+  for(let i=0;i<12;i++){const[x,y]=pos(i);const r=Math.min(17,5+Math.sqrt(m.stakes[i]/32)*1.9)*s+2;
+    const isP=(step>=2&&i===c.prop)||i===hiIdx;const voted=step>=3&&c.committee.includes(i)&&(step>3||stag(t,c.committee.indexOf(i),c.committee.length)>=1);
+    D.circle(x,y,r,isP?C.amber:voted?C.good:C.cyanSoft,isP?C.amber:C.cyan,1.5);
+    if(step===0){D.ctx.beginPath();D.ctx.arc(x,y,r+4,-Math.PI/2,-Math.PI/2+TAU*stag(t,i,12));D.ctx.strokeStyle=C.cyan;D.ctx.lineWidth=2;D.ctx.stroke()}}
+  const bx=w*.5,by=h*.12,bw=w*.24,bh=h*.3;
+  if(step>=2){const k=step===2?ease(t):1;D.rect(bx,by,bw,bh,5,C.surface,C.amber,1.5);D.text(L('Slot bloğu','Slot block'),bx+bw/2,by+14,{size:fs,weight:600});
+    for(let l=0;l<4;l++)D.rect(bx+10,by+30+l*12*s,(bw-20)*clamp(k*4-l),5,2,C.cyanSoft);
+    if(step===2){const[x,y]=pos(c.prop);D.packet(x,y,bx,by+bh/2,t,C.amber,5)}}
+  if(step>=3){const vy=by+bh+14;D.rect(bx,vy,bw,8,4,C.surface2);const share=c.committee.length/11;const k=step===3?clamp(t*1.2):1;
+    D.rect(bx,vy,bw*share*k,8,4,share*k>=2/3?C.good:C.cyan);D.line(bx+bw*2/3,vy-4,bx+bw*2/3,vy+12,C.ink,1.5);D.text('2/3',bx+bw*2/3,vy+22,{size:fs*.85,fam:'mono'});
+    if(step===3)c.committee.forEach((i,j)=>{const[x,y]=pos(i);D.packet(x,y,bx+bw/2,by+bh,stag(t,j,c.committee.length),C.good,3)})}
+  const chx=w*.8,chy=h*.24;D.text(L('Zincir','Chain'),w*.88,h*.08,{size:fs,weight:600,color:C.muted});
+  const gl=11*s+3;D.blockGlyph(chx,chy,gl,C.surface,C.line);D.arrow(chx+gl,chy,chx+gl+10,chy,C.line,1.5,5);
+  if(step>=4){const k=step===4?ease(t):1;const tx=chx+gl*2+16,ty=chy;D.blockGlyph(lerp(bx+bw/2,tx+gl,k),lerp(by+bh/2,ty,k),gl,C.amberSoft,C.amber);
+    D.alpha(.55,()=>{D.blockGlyph(tx+gl,ty+gl*3,gl,C.surface,C.line);D.line(chx+gl,chy+4,tx,ty+gl*3,C.line,1,[3,3])});
+    D.text(L('az oylu dal','fewer votes'),tx+gl,ty+gl*3+gl+10,{size:fs*.8,color:C.muted})}
+  const ey=h*.84;D.text('Casper FFG',w*.5,ey-22*s,{size:fs*.9,weight:600,color:C.muted,align:'left'});
+  ['N-2','N-1','N'].forEach((lb,i)=>{const ex=w*(.5+i*.16),ew=w*.145;
+    let st=i===2?0:1;if(step===5){if(i===1&&t>.25)st=2;if(i===0&&t>.6)st=3}else if(i===0)st=2;
+    const col=st===3?C.good:st===2?C.cyan:C.line;D.rect(ex,ey-10,ew,24,4,st>=2?C.surface:C.surface2,col,1.5);
+    D.text(st===3?lb+' · '+L('kesin','finalized'):st===2?lb+' · justified':'Epoch '+lb,ex+ew/2,ey+2,{size:fs*.78,fam:'mono',color:st>=2?C.ink:C.muted})})}
+},
+/* ======================= DPoS ======================= */
+{id:'dpos',ab:'DPoS',name:'Delegated Proof of Stake',tr:B('Yetki Devirli Hisse İspatı','TR: Yetki Devirli Hisse İspatı'),proof:B('“Token sahipleri beni temsilci seçti.”','“Token holders elected me as their delegate.”'),
+ meta:[[B('Blok süresi','Block time'),B('~0,5 s','~0.5 s')],[B('Kesinlik','Finality'),'~1 s (Savanna)'],[B('Örnek','Examples'),'Vaulta (EOS), TRON']],
+ unit:B('Blok','Block'),start:452018800,struct:B('EOS / Vaulta blok başlığı','EOS / Vaulta block header'),dt:0.5,
+ steps:[
+  S(B('Token sahipleri oy verir','Token holders vote'),B('Her hesap token ağırlığıyla adaylara oy verir. Oylama süreklidir; oy her an değiştirilebilir.','Each account votes for candidates, weighted by its tokens. Voting is continuous; votes can change at any time.'),2200,[]),
+  S(B('21 blok üreticisi seçilir','21 block producers are elected'),B('En çok oyu alan 21 aday üretici takvimine (schedule) girer. Takvim değiştiğinde schedule_version artar.','The 21 candidates with the most votes enter the producer schedule. When the schedule changes, schedule_version increases.'),1900,['sched']),
+  S(B('Sırayla blok üretimi','Round-robin production'),B('Üreticiler sabit sırayla, her biri 0,5 saniyelik slotlarda ardışık 12 blok üretir. Yarış yok, sıra var.','Producers take turns in a fixed order, each producing 12 consecutive blocks in 0.5-second slots. No race, just a rota.'),2600,['producer','time']),
+  S(B('Üreticiler onaylar','Producers confirm'),B('21 üreticinin en az 2/3+1’i (15) bloğu onaylar. Savanna ile bu oylar ~1 saniyede kesinlik sağlar.','At least 2/3+1 of the 21 producers (15) confirm the block. With Savanna, these votes give finality in ~1 second.'),2200,['confirmed','sig']),
+  S(B('Geri alınamaz blok','Irreversible block'),B('Yeterli onayı alan blok kesinleşir. Seçmen ilgisizliği (voter apathy) varsa aynı üreticiler uzun süre koltukta kalır.','A block with enough confirmations becomes final. With voter apathy, the same producers can stay in office for a long time.'),1500,['prev'])],
+ init(){const start=ri(0,20);return{start,prodIdx:(start+5)%21,votes:Array.from({length:8},()=>.35+Math.random()*.65).sort((a,b)=>b-a),hash:hex(64),tmr:hex(64),amr:hex(64),sig:b58(18),txs:ri(20,180)}},
+ producer:c=>(L('uretici','producer'))+String(c.prodIdx+1).padStart(2,'0'),
+ fields(c,I,h){return{head:[
+   ['time','timestamp','slot '+nf(h),L('0,5 s’lik blok slotu','0.5 s block slot')],
+   ['producer','producer',L('uretici','producer')+String(c.prodIdx+1).padStart(2,'0'),L('Takvime göre sırası gelen üretici hesabı','Producer account whose turn it is in the schedule')],
+   ['confirmed','confirmed','15 / 21',L('Onaylayan üretici sayısı (≥ 2/3+1)','Number of confirming producers (≥ 2/3+1)')],
+   ['prev','previous',I.prev,L('Önceki bloğun kimliği (id)','ID of the previous block')],
+   ['tmr','transaction_mroot',c.tmr,L('İşlemlerin Merkle kökü','Merkle root of transactions')],
+   ['amr','action_mroot',c.amr,L('Eylemlerin (actions) Merkle kökü','Merkle root of actions')],
+   ['sched','schedule_version','v'+(312+I.round),L('Aktif üretici takviminin sürümü','Version of the active producer schedule')]],
+  body:[['sig','producer_signature','SIG_K1_'+c.sig+'…',L('Üreticinin imzası','Producer’s signature')],['txs','transactions',c.txs+L(' işlem',' txs'),L('Bloktaki işlemler','Transactions in the block')]]}},
+ draw(g){const{D,w,h,s,step,t,c}=g;const fs=Math.max(10,12*s);
+  D.text(L('Seçmenler','Voters'),w*.1,h*.08,{size:fs,weight:600,color:C.muted});
+  const vx=i=>w*(.04+(i%5)*.032),vy=i=>h*(.18+(i/5|0)*.12);
+  for(let i=0;i<30;i++)D.circle(vx(i),vy(i),3*s+1.5,step===0&&stag(t,i,30)>0&&stag(t,i,30)<1?C.cyan:C.muted);
+  const cxL=w*.27,cw=w*.17;D.text(L('Adaylar','Candidates'),cxL+cw/2,h*.08,{size:fs,weight:600,color:C.muted});
+  for(let k=0;k<8;k++){const y=h*(.17+k*.09);const len=cw*c.votes[k]*(step===0?ease(t):1);const top=k<5&&step>=1;
+    D.rect(cxL,y-5,cw,10,3,C.surface2);D.rect(cxL,y-5,len,10,3,top?C.amber:C.cyan);
+    if(step===0)for(let j=0;j<3;j++){const i=(k*7+j*11)%30;D.packet(vx(i),vy(i),cxL,y,stag(t,k*3+j,24),C.cyan,2.6)}}
+  D.text(L('… ilk 21 seçilir','… top 21 elected'),cxL+cw/2,h*.92,{size:fs*.85,color:C.muted});
+  const rx=w*.71,ry=h*.52,R=Math.min(w*.2,h*.36);
+  D.text(L('Üretici takvimi (21)','Producer schedule (21)'),rx,h*.07,{size:fs,weight:600,color:C.muted});
+  const pos=i=>{const a=i/21*TAU-Math.PI/2;return[rx+Math.cos(a)*R,ry+Math.sin(a)*R]};
+  const act=step===2?(c.start+Math.floor(t*6))%21:step>2?c.prodIdx:-1;
+  const conf=step===3?Math.floor(ease(t)*15):step>3?15:0;
+  for(let i=0;i<21;i++){const[x,y]=pos(i);const el=step>=1&&(step>1||stag(t,i,21)>=1);
+    const ci=(i-act+21)%21;const isA=i===act;const ok=conf>0&&ci>0&&ci<=conf;
+    D.circle(x,y,6*s+2.5,isA?C.amber:ok?C.good:el?C.cyanSoft:C.surface2,isA?C.amber:el?C.cyan:C.line,1.5);
+    if(step===1&&i<5)D.packet(cxL+cw,h*(.17+i*.09),x,y,stag(t,i,5),C.amber,3)}
+  if(step>=2){const[x,y]=pos(act);D.line(rx,ry,x,y,C.amber,1.5,[3,3]);
+    const k=step===4?ease(t):0;D.blockGlyph(lerp(rx,w*.93,k),lerp(ry,h*.9,k),12*s+3,step>=3&&conf>=15?C.surface:C.amberSoft,conf>=15?C.good:C.amber,'#');
+    if(step===2)D.text(L('her üretici 12 blok × 0,5 s','each producer: 12 blocks × 0.5 s'),rx,ry+28*s,{size:fs*.82,color:C.muted});
+    if(step===3){D.text(conf+' / 21 '+L('onay','confirmations'),rx,ry+28*s,{size:fs,fam:'mono',color:conf>=15?C.good:C.ink});
+      for(let j=1;j<=conf;j++){const[px,py]=pos((act+j)%21);D.alpha(.3,()=>D.line(px,py,rx,ry,C.good,1))}}}}
+},
+/* ======================= PoA ======================= */
+{id:'poa',ab:'PoA',name:'Proof of Authority',tr:B('Yetki İspatı','TR: Yetki İspatı'),proof:B('“Kimliği doğrulanmış, yetkili bir otoriteyim.”','“I am an authorised, verified identity.”'),
+ meta:[[B('Blok süresi','Block time'),B('Ağa göre (ör. 5 s)','Per network (e.g. 5 s)')],[B('Kesinlik','Finality'),B('Clique: hızlı · QBFT: deterministik','Clique: fast · QBFT: deterministic')],[B('Örnek','Examples'),'VeChainThor, Besu (Clique/QBFT)']],
+ unit:B('Blok','Block'),start:1240318,struct:B('Clique (EIP-225) blok başlığı','Clique (EIP-225) block header'),dt:5,
+ steps:[
+  S(B('Otoriteler bellidir','Authorities are known'),B('Bloğu yalnızca önceden onaylanmış, gerçek kimliği bilinen otoriteler üretebilir. Teminatın yerini itibar alır.','Only pre-approved authorities with known real-world identities may produce blocks. Reputation replaces stake.'),1800,[]),
+  S(B('Sıradaki otorite (in-turn)','In-turn authority'),B('Blok numarası mod otorite sayısı, sırası gelen imzacıyı belirler. Diğerleri kısa bir gecikmeyle yedekte bekler.','Block number mod number of authorities picks the in-turn signer. The others wait as backups with a short delay.'),1800,['num','diff']),
+  S(B('Blok üretilir ve mühürlenir','Block is produced and sealed'),B('Otorite işlemleri ekler ve başlığın extraData alanına 65 baytlık imzasını (seal) yazar.','The authority adds transactions and writes its 65-byte signature (seal) into the header’s extraData field.'),2000,['extra','txs']),
+  S(B('Diğer otoriteler doğrular','Other authorities verify'),B('İmzacının yetkili listede olup olmadığı ve son ⌊N/2⌋+1 blokta imza atıp atmadığı kontrol edilir.','They check that the signer is on the authorised list and has not signed within the last ⌊N/2⌋+1 blocks.'),2100,['extra','coinbase','nonce']),
+  S(B('Zincire eklenir','Appended to the chain'),B('Sırası gelen imzacının bloğu difficulty = 2 taşır, en ağır zincir seçilir. Yeni otorite ekleme ya da çıkarma oylarla yapılır.','An in-turn block carries difficulty = 2 and the heaviest chain wins. Authorities are added or removed by voting.'),1500,['parent','diff'])],
+ init(){return{hash:hex(64),extra:hex(8)+'…'+hex(10),txs:ri(5,90)}},
+ orgs:()=>[L('Banka A','Bank A'),L('Banka B','Bank B'),L('Bakanlık','Ministry'),L('Üniversite','University'),'Telekom'],
+ producer(c,h){return this.orgs()[h%5]},
+ fields(c,I,h){return{head:[
+   ['parent','parentHash',I.prev,L('Önceki bloğun hash’i','Hash of the previous block')],
+   ['num','number',nf(h),L('Blok numarası; number mod N sıradaki imzacıyı verir','Block number; number mod N gives the in-turn signer')],
+   ['diff','difficulty','2 (in-turn)',L('2 = sırası gelen imzacı, 1 = sırası olmayan','2 = in-turn signer, 1 = out-of-turn')],
+   ['coinbase','coinbase','0x0000…0000',L('Oylanan aday adresi (yoksa sıfır)','Address being voted on (zero if none)')],
+   ['nonce','nonce','0x0000000000000000',L('0xff…ff = ekle oyu, 0x00…00 = çıkar oyu','0xff…ff = vote to add, 0x00…00 = vote to drop')],
+   ['extra','extraData','0x'+c.extra,L('32 B vanity + 65 B imza (seal)','32 B vanity + 65 B signature (seal)')]],
+  body:[['txs','transactions',c.txs+L(' işlem',' txs'),L('Otoritenin eklediği işlemler','Transactions added by the authority')]]}},
+ draw(g){const{D,w,h,s,step,t,height}=g;const fs=Math.max(10,12*s);
+  const orgs=this.orgs();const it=height%5;
+  const bw=w*.15,bh=h*.24,y=h*.1;const X=i=>w*(.05+i*.185);
+  for(let i=0;i<5;i++){const x=X(i);const isT=step>=1&&i===it;const ok0=step>0||stag(t,i,5)>=1;
+    D.rect(x,y,bw,bh,5,isT?C.amberSoft:C.surface,isT?C.amber:C.line,isT?2:1,step>=1&&!isT?[4,3]:null);
+    D.circle(x+bw*.22,y+bh*.36,bh*.14,C.surface2,C.muted,1);D.rect(x+bw*.42,y+bh*.25,bw*.45,4,2,C.line);D.rect(x+bw*.42,y+bh*.4,bw*.32,4,2,C.line);
+    D.text(orgs[i],x+bw/2,y+bh*.78,{size:fs*.9,weight:600});
+    if(ok0&&step<1)D.check(x+bw-12,y+12,9,C.good);
+    if(step>=1&&!isT)D.text(L('sırası değil','not in turn'),x+bw/2,y+bh+12,{size:fs*.8,color:C.muted})}
+  if(step>=1)D.text('#'+nf(height)+' mod 5 = '+it,X(it)+bw/2,y+bh+12,{size:fs*.82,fam:'mono',color:C.amber});
+  const kx=w*.42,ky=h*.56,kw=w*.18,kh=h*.24;
+  if(step>=2){const k=step===4?ease(t):0;const ox=lerp(kx,w*.8,k),oy=lerp(ky,h*.62,k);
+    D.rect(ox,oy,kw,kh,5,C.surface,step>=3?C.good:C.amber,1.5);D.text(L('Blok','Block')+' #'+nf(height),ox+kw/2,oy+14,{size:fs*.9,weight:600,fam:'mono'});
+    for(let l=0;l<3;l++)D.rect(ox+10,oy+28+l*10*s,(kw-50)*(step===2?clamp(t*3-l):1),4,2,C.cyanSoft);
+    const sealK=step===2?clamp((t-.5)*2):1;if(sealK>0){D.circle(ox+kw-18,oy+kh-18,12*sealK*s+1,C.amberSoft,C.amber,2);D.text('seal',ox+kw-18,oy+kh-18,{size:fs*.7,fam:'mono',alpha:sealK})}
+    if(step===2)D.packet(X(it)+bw/2,y+bh,kx+kw/2,ky,clamp(t*2),C.amber,4.5)}
+  if(step===3)for(let i=0,j=0;i<5;i++){if(i===it)continue;D.packet(kx+kw/2,ky,X(i)+bw/2,y+bh+20,stag(t,j,4),C.cyan,3.5);if(stag(t,j,4)>=1)D.check(X(i)+bw-12,y+12,9,C.good);j++}
+  if(step===3)D.text(L('imzacı listede mi? son ⌊N/2⌋+1 blokta imzaladı mı?','signer on the list? signed in the last ⌊N/2⌋+1 blocks?'),w*.5,h*.94,{size:fs*.85,color:C.muted});
+  if(step===4)D.text(L('difficulty = 2 → zincire eklendi','difficulty = 2 → appended'),w*.5,h*.94,{size:fs*.9,color:C.good})}
+},
+/* ======================= PoSA ======================= */
+{id:'posa',ab:'PoSA',name:'Proof of Staked Authority',tr:B('Teminatlı Yetki İspatı','TR: Teminatlı Yetki İspatı'),proof:B('“Hem onaylıyım hem de teminat yatırdım.”','“I am both approved and staked.”'),
+ meta:[[B('Blok süresi','Block time'),'<1 s (2025)'],[B('Kesinlik','Finality'),B('Hızlı kesinlik oylarıyla birkaç blok','A few blocks via fast-finality votes')],[B('Örnek','Example'),'BNB Smart Chain']],
+ unit:B('Blok','Block'),start:65230110,struct:B('BSC (Parlia) blok başlığı','BSC (Parlia) block header'),dt:0.75,
+ steps:[
+  S(B('Epoch başında doğrulayıcı seti','Validator set at epoch start'),B('Teminat (stake + delegasyon) en yüksek adaylar aktif doğrulayıcı setine girer. Set, epoch bloğunun extraData alanına yazılır.','Candidates with the highest stake (own + delegated) join the active validator set, which is written into the epoch block’s extraData.'),2200,['extra']),
+  S(B('Sıradaki doğrulayıcı','In-turn validator'),B('Aktif set içinde sıra döner. Sırası gelen doğrulayıcı difficulty = 2 ile bloğu üretir.','Turns rotate within the active set. The in-turn validator produces the block with difficulty = 2.'),1600,['coinbase','diff']),
+  S(B('Blok üretilir ve imzalanır','Block is produced and signed'),B('Doğrulayıcı işlemleri ve ödül dağıtan sistem işlemlerini ekleyip bloğu imzalar.','The validator adds user transactions and the system transactions that distribute rewards, then signs the block.'),1800,['txs','sys']),
+  S(B('Hızlı kesinlik oyları (BLS)','Fast-finality votes (BLS)'),B('Diğer doğrulayıcıların oyları tek bir BLS imzasında birleştirilir ve sonraki bloğa eklenir.','Votes from the other validators are aggregated into a single BLS signature and included in the next block.'),2200,['vote']),
+  S(B('Zincire eklenir','Appended to the chain'),B('Hem itibar hem teminat risktedir: kural ihlali teminattan kesinti ve setten çıkarılma getirir. Bedeli küçük bir kulüptür.','Both reputation and stake are at risk: misbehaviour means slashing and removal from the set. The price is a small club.'),1500,['parent'])],
+ init(){return{st:Array.from({length:9},()=>.3+Math.random()*.7).sort((a,b)=>b-a),hash:hex(64),addr:hex(6)+'…'+hex(4),txs:ri(80,400)}},
+ producer:(c,h)=>L('doğrulayıcı V','validator V')+(h%5+1),
+ fields(c,I,h){return{head:[
+   ['parent','parentHash',I.prev,L('Önceki bloğun hash’i','Hash of the previous block')],
+   ['num','number',nf(h),L('Blok numarası','Block number')],
+   ['coinbase','coinbase','0x'+c.addr+' (V'+(h%5+1)+')',L('Bloğu üreten doğrulayıcının adresi','Address of the producing validator')],
+   ['diff','difficulty','2 (in-turn)',L('2 = sırası gelen, 1 = sırası olmayan','2 = in-turn, 1 = out-of-turn')],
+   ['extra','extraData',L('vanity · set · oy · imza','vanity · set · vote · seal'),L('Epoch bloğunda aktif set; her blokta imza ve oy kaydı','Active set in epoch blocks; signature and vote record in every block')],
+   ['vote','vote_attestation',L('BLS agg · 4/5 oy','BLS agg · 4/5 votes'),L('Hızlı kesinlik için birleştirilmiş oylar','Aggregated votes for fast finality')]],
+  body:[['txs','transactions',c.txs+L(' işlem',' txs'),L('Kullanıcı işlemleri','User transactions')],['sys','system txs',L('ödül dağıtımı','reward distribution'),L('Blok ödülünü doğrulayıcılara dağıtan sistem işlemleri','System transactions that pay out block rewards')]]}},
+ draw(g){const{D,w,h,s,step,t,c,height}=g;const fs=Math.max(10,12*s);
+  const bx0=w*.04,bw=w*.035,gap=w*.008,base=h*.86,maxH=h*.62;
+  D.text(L('Teminat sıralaması','Stake ranking'),bx0+(bw+gap)*4.5,h*.09,{size:fs,weight:600,color:C.muted});
+  for(let i=0;i<9;i++){const k=step===0?ease(stag(t,i,9)):1;const top=i<5&&(step>0||t>.7);const x=bx0+i*(bw+gap);
+    D.rect(x,base-maxH*c.st[i]*k,bw,maxH*c.st[i]*k,2,top?C.cyan:C.line);}
+  D.line(bx0-4,base,bx0+9*(bw+gap),base,C.muted,1);D.text(L('aktif set →','active set →'),bx0+(bw+gap)*2.5,base+14,{size:fs*.8,color:C.cyan});
+  const it=height%5;const sx=i=>w*(.5+i*.1),sy=h*.22;
+  D.text(L('Aktif doğrulayıcılar','Active validators'),w*.7,h*.09,{size:fs,weight:600,color:C.muted});
+  for(let i=0;i<5;i++){const isT=step>=1&&i===it;const voted=step>3||(step===3&&i!==it&&stag(t,(i-it+5)%5-1,4)>=1);
+    D.circle(sx(i),sy,11*s+3,isT?C.amber:voted?C.good:C.cyanSoft,isT?C.amber:C.cyan,1.5);D.text('V'+(i+1),sx(i),sy,{size:fs*.8,fam:'mono',color:isT||voted?C.bg:C.ink});
+    if(step===0&&t>.7)D.packet(bx0+i*(bw+gap)+bw/2,base-maxH*c.st[i],sx(i),sy,clamp((t-.7)/.3),C.cyan,3)}
+  const kx=w*.56,ky=h*.48,kw=w*.2,kh=h*.24;
+  if(step>=2){const k=step===4?ease(t):0;const ox=lerp(kx,w*.8,k),oy=lerp(ky,h*.62,k);
+    D.rect(ox,oy,kw,kh,5,C.surface,step>=3?C.good:C.amber,1.5);D.text(L('Blok','Block')+' #'+nf(height),ox+kw/2,oy+14,{size:fs*.88,weight:600,fam:'mono'});
+    for(let l=0;l<3;l++)D.rect(ox+10,oy+28+l*10*s,(kw-20)*(step===2?clamp(t*3-l):1),4,2,C.cyanSoft);
+    if(step===2)D.packet(sx(it),sy,kx+kw/2,ky,clamp(t*2),C.amber,4.5)}
+  if(step===3){const ax=kx+kw+w*.07,ay=ky+kh/2;D.circle(ax,ay,14*s+2,C.surface,C.good,2);D.text('BLS',ax,ay,{size:fs*.75,fam:'mono'});
+    for(let i=0,j=0;i<5;i++){if(i===it)continue;D.packet(sx(i),sy,ax,ay,stag(t,j,4),C.good,3.5);j++}
+    D.arrow(ax-14*s-3,ay,kx+kw,ay,C.good,1.5,5);D.text(L('4 oy → tek imza','4 votes → one signature'),ax,ay+26*s,{size:fs*.82,color:C.muted})}}
+},
+/* ======================= PBFT ======================= */
+{id:'pbft',ab:'PBFT',name:'Practical Byzantine Fault Tolerance',tr:B('Pratik Bizans Hata Toleransı','TR: Pratik Bizans Hata Toleransı'),proof:B('“2f+1 düğüm aynı sıraya imza attı.”','“2f+1 nodes signed the same order.”'),
+ meta:[[B('Blok süresi','Block time'),B('İstek geldikçe','On demand')],[B('Kesinlik','Finality'),B('Deterministik (commit anında)','Deterministic (at commit)')],[B('Örnek','Examples'),'Fabric SmartBFT, CometBFT']],
+ unit:B('Sıra no','Seq no'),start:1204,struct:B('PBFT istek grubu (n = 4, f = 1)','PBFT request batch (n = 4, f = 1)'),dt:1,
+ steps:[
+  S('request',B('İstemci isteğini birincil (primary, lider) düğüme gönderir. Lider = görünüm (view) mod n.','The client sends its request to the primary (leader). Leader = view mod n.'),1500,['reqs']),
+  S('pre-prepare',B('Lider isteğe bir sıra numarası atar ve tüm kopyalara (replicas) duyurur.','The leader assigns a sequence number and announces it to all replicas.'),1800,['seq','view','digest']),
+  S('prepare',B('Her kopya mesajı herkese yayar. 2f = 2 eşleşen prepare toplayan düğüm “hazır” olur. Hatalı Kopya 3 yanlış özet gönderir.','Each replica broadcasts to everyone. A node that collects 2f = 2 matching prepares becomes “prepared”. Faulty Replica 3 sends a wrong digest.'),2500,['prep']),
+  S('commit',B('Hazır düğümler commit yayar. 2f+1 = 3 commit toplanınca istek yürütülür; bu an kesinliktir, çatal yoktur.','Prepared nodes broadcast commit. Once 2f+1 = 3 commits arrive, the request executes; that moment is final, with no forks.'),2500,['commit']),
+  S('reply',B('Düğümler sonucu istemciye bildirir. İstemci f+1 = 2 aynı yanıtı görünce sonuca güvenir. Mesaj sayısı ~n² büyür.','Nodes report the result to the client, which trusts it after f+1 = 2 matching replies. Message count grows as ~n².'),1800,['digest'])],
+ init(){return{hash:hex(64),view:3,reqs:ri(10,60)}},
+ producer:()=>L('lider (v=3 → düğüm 0)','leader (v=3 → node 0)'),
+ fields(c,I,h){return{head:[
+   ['view','view (v)','3',L('Görünüm numarası; lider = v mod n','View number; leader = v mod n')],
+   ['seq','sequence (n)',nf(h),L('Liderin atadığı sıra numarası','Sequence number assigned by the leader')],
+   ['digest','digest (d)',c.hash,L('İstek grubunun özeti','Digest of the request batch')],
+   ['prev','prev_digest',I.prev,L('Önceki onaylanmış grubun özeti','Digest of the previous committed batch')]],
+  body:[['reqs','requests',c.reqs+L(' istek',' requests'),L('Bu sıraya alınan istemci istekleri','Client requests ordered at this sequence')],
+   ['prep','prepare cert.',L('2 eşleşen prepare + pre-prepare','2 matching prepares + pre-prepare'),L('“Hazır” olma kanıtı (2f)','Proof of being “prepared” (2f)')],
+   ['commit','commit cert.',L('3 commit imzası','3 commit signatures'),L('Kesinlik kanıtı (2f+1)','Proof of finality (2f+1)')]]}},
+ draw(g){const{D,w,h,s,step,t}=g;const fs=Math.max(10,12*s);
+  const lanes=[L('İstemci','Client'),L('Birincil (0)','Primary (0)'),L('Kopya 1','Replica 1'),L('Kopya 2','Replica 2'),L('Kopya 3','Replica 3')];const Y=i=>h*(.2+i*.155);
+  const x0=w*.17,x1=w*.97,cw=(x1-x0)/5;const ph=['request','pre-prepare','prepare','commit','reply'];
+  for(let i=0;i<5;i++){D.line(x0,Y(i),x1,Y(i),i===4?C.bad:C.line,1,i===4?[4,4]:null);D.text(lanes[i],x0-8,Y(i),{size:fs*.92,align:'right',weight:i===1?600:500,color:i===4?C.bad:C.ink})}
+  D.cross(x0-8-D.ctx.measureText(lanes[4]).width-12,Y(4),8,C.bad);
+  for(let p=0;p<5;p++){const xa=x0+p*cw;D.line(xa,h*.1,xa,h*.9,C.line,1,[2,4]);D.text(ph[p],xa+cw/2,h*.08,{size:fs*.9,fam:'mono',color:p===step?C.cyan:C.muted,weight:p===step?600:500})}
+  const M=[[[0,1]],[[1,2],[1,3],[1,4]],[[2,1],[2,3],[2,4],[3,1],[3,2],[3,4],[4,1,1],[4,2,1]],[[1,2],[1,3],[2,1],[2,3],[3,1],[3,2]],[[1,0],[2,0],[3,0]]];
+  for(let p=0;p<=step;p++){const xa=x0+p*cw+6,xb=x0+(p+1)*cw-6;const list=M[p];
+    list.forEach((m,j)=>{const bad=m[2];const col=bad?C.bad:p===step?(p>=3?C.good:C.cyan):C.muted;const k=p<step?1:stag(t,j,list.length,.6);
+      D.alpha(p<step?.45:1,()=>D.partial(xa,Y(m[0]),xb,Y(m[1]),k,col,1.4,bad?[4,3]:null))})}
+  const notes=[L('İstemci → lider','Client → leader'),L('Lider sıra numarası atar','Leader assigns a sequence no.'),L('2f = 2 eşleşen prepare','2f = 2 matching prepares'),L('2f+1 = 3 commit → yürüt','2f+1 = 3 commits → execute'),L('f+1 = 2 aynı yanıt','f+1 = 2 matching replies')];
+  D.text(notes[step],x0+step*cw+cw/2,h*.96,{size:fs*.85,color:step>=3?C.good:C.ink,weight:600,alpha:clamp(t*3)})}
+},
+/* ======================= RPCA ======================= */
+{id:'rpca',ab:'RPCA',name:'Ripple Protocol Consensus Algorithm',tr:B('XRP Ledger Uzlaşma Protokolü','Today: XRP Ledger Consensus Protocol'),proof:B('“Güvendiğim listenin (UNL) %80’i aynı kümeyi onayladı.”','“80% of the list I trust (UNL) approved the same set.”'),
+ meta:[[B('Defter süresi','Ledger time'),'3–5 s'],[B('Kesinlik','Finality'),B('Deterministik','Deterministic')],[B('Örnek','Example'),'XRP Ledger (XRPL)']],
+ unit:B('Defter','Ledger'),start:99812450,struct:B('XRPL defter (ledger) başlığı','XRPL ledger header'),dt:4,
+ steps:[
+  S(B('Aday küme oluşur','Candidate set forms'),B('Her sunucu geçerli gördüğü işlemleri aday kümeye (candidate set) koyar ve UNL’deki doğrulayıcılarla paylaşır.','Each server puts the transactions it considers valid into a candidate set and shares it with the validators on its UNL.'),1800,['txh']),
+  S(B('Tur 1 · eşik %50','Round 1 · threshold 50%'),B('Doğrulayıcılar önerileri oylar. En az %50 destek alan işlemler kümede kalır.','Validators vote on proposals. Transactions with at least 50% support stay in the set.'),1700,[]),
+  S(B('Tur 2 · eşik %60','Round 2 · threshold 60%'),B('Eşik her turda yükselir. Görüşler birbirine yaklaşır.','The threshold rises every round, and views converge.'),1500,[]),
+  S(B('Tur 3 · eşik %70','Round 3 · threshold 70%'),B('Yeterli destek bulamayan işlemler bir sonraki deftere ertelenir.','Transactions without enough support are deferred to the next ledger.'),1500,[]),
+  S(B('Son tur · eşik %80','Final round · threshold 80%'),B('UNL’nin en az %80’i aynı kümede uzlaşınca küme kesinleşir.','Once at least 80% of the UNL agrees on the same set, the set is final.'),1700,['txh','txs']),
+  S(B('Defter kapanır ve doğrulanır','Ledger closes and is validated'),B('Yeni defter uygulanır, imzalı doğrulama mesajları (validations) yayılır. Çatal yoktur; kesinlik deterministiktir.','The new ledger is applied and signed validation messages are broadcast. No forks; finality is deterministic.'),1900,['acc','close','val'])],
+ init(){const fin=[.96,.9,.86,.42+Math.random()*.2];const ini=[.62,.55,.5,.5];return{fin,ini,hash:hex(64),txh:hex(64),acc:hex(64),tot:ri(100,999)+'.'+ri(100,999),swaps:Array.from({length:6},()=>[ri(0,9),ri(0,9)])}},
+ producer:()=>L('UNL uzlaşması','UNL consensus'),
+ fields(c,I,h){return{head:[
+   ['idx','ledger_index',nf(h),L('Defter sıra numarası','Ledger sequence number')],
+   ['parent','parent_hash',I.prev,L('Önceki defterin hash’i','Hash of the previous ledger')],
+   ['close','close_time',new Date(I.ts*1000).toISOString().slice(0,19).replace('T',' '),L('Kapanış zamanı (10 s’ye yuvarlanır)','Close time (rounded to 10 s)')],
+   ['txh','transaction_hash',c.txh,L('İşlem ağacının (SHAMap) kökü','Root of the transaction tree (SHAMap)')],
+   ['acc','account_hash',c.acc,L('Hesap durumu ağacının kökü','Root of the account-state tree')],
+   ['drops','total_coins',L('99.985.'+c.tot+' XRP','99,985,'+c.tot.replace('.',',')+' XRP'),L('Dolaşımdaki toplam XRP (ücretler yakılır)','Total XRP in existence (fees are burned)')]],
+  body:[['txs','transactions',L('3 işlem · 1 ertelendi','3 txs · 1 deferred'),L('Uzlaşmayla kabul edilen işlemler','Transactions accepted by consensus')],['val','validations',L('≥ 8 / 10 UNL imzası','≥ 8 / 10 UNL signatures'),L('Defteri doğrulayan imzalı mesajlar','Signed messages validating the ledger')]]}},
+ draw(g){const{D,w,h,s,step,t,c}=g;const fs=Math.max(10,12*s);
+  const cx=w*.27,cy=h*.53,R=Math.min(w*.2,h*.34);const th=[0,.5,.6,.7,.8,.8][step];
+  const r=step===0?0:step>=5?4:step-1+ease(t);const avg=lerp(.55,.92,clamp(r/4));
+  const pos=i=>{const a=i/10*TAU-Math.PI/2;return[cx+Math.cos(a)*R,cy+Math.sin(a)*R]};
+  D.text(L('UNL (güvenilen doğrulayıcılar)','UNL (trusted validators)'),cx,h*.07,{size:fs,weight:600,color:C.muted});
+  if(step>=1&&step<=4)c.swaps.forEach((p,j)=>{if(p[0]===p[1])return;const[a1,b1]=pos(p[0]),[a2,b2]=pos(p[1]);D.alpha(.35,()=>D.line(a1,b1,a2,b2,C.cyan,1));D.packet(a1,b1,a2,b2,(t*1.6+j*.17)%1,C.cyan,2.6)});
+  for(let i=0;i<10;i++){const[x,y]=pos(i);const agree=i<Math.round(avg*10)||step>=5;const v=step===5&&stag(t,i,10)>=1;
+    D.circle(x,y,9*s+3,v?C.good:agree&&step>0?C.cyanSoft:C.surface2,v?C.good:agree&&step>0?C.cyan:C.line,1.5);
+    if(step===5)D.packet(x,y,cx,cy,stag(t,i,10),C.good,3)}
+  D.circle(cx,cy,R*.42,C.surface,step===5?C.good:C.line,1.5);
+  D.text(step===0?L('aday küme','candidate set'):step===5?L('kapandı','closed'):L('eşik','threshold'),cx,cy-10*s,{size:fs*.85,color:C.muted});
+  D.text(step===0?'·':step===5?'✓':Math.round(th*100)+'%',cx,cy+10*s,{size:fs*1.5,weight:800,fam:'disp',color:step===5?C.good:C.ink});
+  if(step===0)for(let j=0;j<4;j++)D.packet(w*.62,h*(.2+j*.17),cx,cy,stag(t,j,4),C.cyan,3.5);
+  const lx=w*.56,lw=w*.4;D.text(L('İşlem desteği','Transaction support'),lx+lw/2,h*.07,{size:fs,weight:600,color:C.muted});
+  for(let k=0;k<4;k++){const y=h*(.2+k*.17);const sup=lerp(c.ini[k],c.fin[k],clamp(r/4));const out=step>=1&&sup<th&&k===3&&r>=2;
+    D.text('tx '+(k+1),lx,y-12*s,{size:fs*.85,fam:'mono',align:'left',color:out?C.bad:C.ink});
+    D.text(out?L('sonraki deftere','to next ledger'):Math.round(sup*100)+'%',lx+lw,y-12*s,{size:fs*.85,fam:'mono',align:'right',color:out?C.bad:C.muted});
+    D.rect(lx,y-3,lw,8,4,C.surface2);D.rect(lx,y-3,lw*sup,8,4,out?C.bad:sup>=.8&&step>=4?C.good:C.cyan);
+    if(step>=1)D.line(lx+lw*th,y-7,lx+lw*th,y+9,C.ink,1.5)}}
+},
+/* ======================= PoH ======================= */
+{id:'poh',ab:'PoH',name:'Proof of History',tr:B('Tarihçe (Zaman) İspatı · Solana','TR: Tarihçe (Zaman) İspatı · Solana'),proof:B('“Bu olayın bu sırada gerçekleştiğini doğrulanabilir bir saatle gösterebilirim.”','“I can show, with a verifiable clock, that this event happened in this order.”'),
+ meta:[[B('Slot süresi','Slot time'),'~400 ms'],[B('Kesinlik','Finality'),B('Tower BFT: 32 slot ≈ 12,8 s (Alpenglow hedefi ~150 ms)','Tower BFT: 32 slots ≈ 12.8 s (Alpenglow target ~150 ms)')],[B('Örnek','Example'),'Solana']],
+ unit:'Slot',start:381220400,struct:B('Solana bloğu (slot + entry’ler)','Solana block (slot + entries)'),dt:0.4,
+ steps:[
+  S(B('Lider takvimi','Leader schedule'),B('PoH tek başına uzlaşma değildir. Hangi doğrulayıcının hangi slotta lider olacağı teminata (PoS) göre önceden bellidir; her lider 4 slot üretir.','PoH on its own is not consensus. Which validator leads which slot is fixed in advance by stake (PoS); each leader produces 4 slots.'),1800,['leader']),
+  S(B('PoH saati işler','The PoH clock ticks'),B('Lider SHA-256’yı sürekli kendi çıktısı üzerine uygular. Sıralı hash zinciri zamanın geçtiğinin kanıtıdır; paralel hızlandırılamaz.','The leader keeps applying SHA-256 to its own output. The sequential hash chain proves time has passed; it cannot be parallelised.'),2200,['nh']),
+  S(B('İşlemler zincire karışır','Transactions are mixed in'),B('Gelen işlemler hash zincirine karıştırılır. Böylece her işlemin “ne zaman” geldiği doğrulanabilir hale gelir.','Incoming transactions are mixed into the hash chain, so “when” each arrived becomes verifiable.'),2200,['entries','nh']),
+  S(B('Entry’ler yayılır (Turbine)','Entries propagate (Turbine)'),B('Blok parçalara bölünür ve ağaç biçiminde katman katman doğrulayıcılara dağıtılır.','The block is split into shreds and fanned out to validators layer by layer in a tree.'),2000,['entries','hash']),
+  S(B('Oylama (Tower BFT)','Voting (Tower BFT)'),B('Doğrulayıcılar slota oy verir. Her ardışık oy kilit süresini (lockout) ikiye katlar: 2, 4, 8, 16…','Validators vote on the slot. Each consecutive vote doubles the lockout: 2, 4, 8, 16…'),2200,['parent']),
+  S(B('Kök (rooted) olur','Slot becomes rooted'),B('32 kat onaydan sonra slot geri alınamaz. 2025’te onaylanan Alpenglow bu süreyi ~150 ms’ye indirmeyi hedefliyor.','After 32 levels of confirmation the slot cannot be reverted. Alpenglow, approved in 2025, aims to cut this to ~150 ms.'),1700,[])],
+ init(){return{hash:b58(44),lead:b58(8),entries:ri(40,64),txs:ri(900,2600)}},
+ producer:(c,h)=>(L('lider L','leader L'))+((Math.floor(h/4))%4+1),
+ fields(c,I,h){return{head:[
+   ['slot','slot',nf(h),L('~400 ms’lik zaman dilimi','~400 ms time slot')],
+   ['parent','parent_slot',nf(h-1),L('Üzerine kurulan önceki slot','Previous slot this block builds on')],
+   ['prevh','previous_blockhash',I.prev,L('Önceki bloğun hash’i (son entry)','Hash of the previous block (last entry)')],
+   ['hash','blockhash',c.hash,L('Bu slotun son PoH entry hash’i','Last PoH entry hash of this slot')],
+   ['leader','leader','L'+((Math.floor(h/4))%4+1)+' · '+c.lead+'…',L('Takvime göre bu slotun lideri','Scheduled leader of this slot')]],
+  body:[['entries','entries',c.entries+' entry',L('Her entry: {num_hashes, hash, transactions}','Each entry: {num_hashes, hash, transactions}')],
+   ['nh','num_hashes',L('önceki entry’den bu yana hash sayısı','hashes since the previous entry'),L('PoH saatinin “tik” sayısı','Tick count of the PoH clock')],
+   ['txs','transactions',c.txs+L(' işlem',' txs'),L('Entry’lere karışan işlemler (oylar dahil)','Transactions mixed into entries (incl. votes)')]]}},
+ draw(g){const{D,w,h,s,step,t,clock,height}=g;const fs=Math.max(10,12*s);
+  const cols=[C.cyan,C.amber,C.good,C.muted];const n=16,sw=(w*.94)/n,sx=w*.03,sy=h*.1;
+  D.text(L('Lider takvimi · her lider 4 slot','Leader schedule · 4 slots per leader'),sx,sy-12*s+2,{size:fs*.9,weight:600,color:C.muted,align:'left'});
+  const base=height-6;for(let i=0;i<n;i++){const sl=base+i;const Ld=Math.floor(sl/4)%4;const cur=sl===height;
+    D.rect(sx+i*sw+1,sy,sw-2,h*.08,2,cur?cols[Ld]:C.surface2,cols[Ld],cur?2:1);
+    if(i%4===0||cur)D.text('L'+(Ld+1),sx+i*sw+sw/2,sy+h*.04,{size:fs*.75,fam:'mono',color:cur?C.bg:C.ink})}
+  const cy=h*.42,sq=Math.max(10,15*s),gapx=sq*.5,speed=step>=1?.06:0;const off=(clock*speed)%(sq+gapx);const tick=Math.floor(clock*speed/(sq+gapx));
+  D.text('PoH: hash(hash(hash(…)))',sx,cy-sq-8,{size:fs*.9,fam:'mono',color:C.muted,align:'left'});
+  const count=Math.ceil(w/(sq+gapx))+1;
+  for(let i=0;i<count;i++){const x=sx+i*(sq+gapx)-off;if(x<sx-sq||x>w)continue;const k=tick+i;const isTx=step>=2&&hi(k)%5===0;
+    D.rect(x,cy-sq/2,sq,sq,2,isTx?C.amber:C.cyanSoft,isTx?C.amber:C.cyan,1);if(i<count-1)D.line(x+sq,cy,x+sq+gapx,cy,C.line,1)}
+  D.text('num_hashes: '+nf(12500*(tick%400)+Math.floor(clock)%12500),w*.97,cy-sq-8,{size:fs*.85,fam:'mono',align:'right',color:C.ink});
+  if(step===2)D.text(L('■ işlem karıştırıldı','■ transaction mixed in'),w*.97,cy+sq+8,{size:fs*.85,align:'right',color:C.amber});
+  const ty=h*.75;
+  if(step===3){const L0=[w*.1,ty],L1=[0,1,2].map(i=>[w*.32,ty+(i-1)*h*.1]),L2=[0,1,2,3,4,5].map(i=>[w*.56,ty+(i-2.5)*h*.055]);
+    D.circle(L0[0],L0[1],9*s+3,C.amber);D.text(L('lider','leader'),L0[0],L0[1]+20*s,{size:fs*.8,color:C.muted});
+    L1.forEach((p,i)=>{D.partial(L0[0]+12,L0[1],p[0]-10,p[1],clamp(t*2.2-i*.15),C.cyan,1.3);D.circle(p[0],p[1],7*s+2,t>.45?C.cyanSoft:C.surface2,C.cyan,1.3)});
+    L2.forEach((p,i)=>{const a=L1[i>>1];D.partial(a[0]+10,a[1],p[0]-8,p[1],clamp((t-.45)*2.2),C.cyan,1.2);D.circle(p[0],p[1],6*s+2,t>.9?C.cyanSoft:C.surface2,C.cyan,1.2)});
+    D.text(L('Turbine: parçalar katman katman yayılır','Turbine: shreds fan out layer by layer'),w*.97,ty-h*.16,{size:fs*.85,align:'right',color:C.muted})}
+  if(step>=4){const lk=[2,4,8,16,32];const bx=w*.12,bw=w*.11;D.text(L('Tower BFT kilitleri (slot)','Tower BFT lockouts (slots)'),bx,ty-h*.18,{size:fs*.9,weight:600,color:C.muted,align:'left'});
+    lk.forEach((v,i)=>{const k=step===4?clamp(t*5-i):1;const bh=h*.17*(Math.log2(v)/5)*k;D.rect(bx+i*bw*.9,ty+h*.08-bh,bw*.6,bh,2,step===5?C.good:C.cyan);D.text(String(v),bx+i*bw*.9+bw*.3,ty+h*.08+12,{size:fs*.8,fam:'mono'})});
+    if(step===5){D.blockGlyph(w*.8,ty,16*s+3,C.surface,C.good,'root');D.text(L('geri alınamaz','irreversible'),w*.8,ty+30*s,{size:fs*.85,color:C.good})}}
+  if(step<3){D.rect(w*.03,ty-h*.1,w*.5,h*.2,5,C.surface,C.line,1);
+    D.text('entry { num_hashes, hash, transactions[] }',w*.05,ty-h*.03,{size:fs*.85,fam:'mono',align:'left'});
+    D.text(step===0?L('slot ','slot ')+nf(height)+L(' lideri: L',' leader: L')+(Math.floor(height/4)%4+1):step===1?L('boş entry = tik (saat ilerler)','empty entry = tick (clock advances)'):L('işlem içeren entry','entry carrying transactions'),w*.05,ty+h*.04,{size:fs*.85,align:'left',color:C.muted})}}
+},
+/* ======================= DAG ======================= */
+{id:'dag',ab:'DAG',name:'Directed Acyclic Graph',tr:B('Yönlü Döngüsüz Çizge · Tangle','TR: Yönlü Döngüsüz Çizge · Tangle'),proof:B('“Yeni işlemim, önceki iki işlemi doğruladı.”','“My new transaction approved two earlier ones.”'),
+ meta:[[B('Blok süresi','Block time'),B('Blok yok (işlem bazlı)','No blocks (per transaction)')],[B('Kesinlik','Finality'),B('Birikmiş ağırlıkla','By cumulative weight')],[B('Örnek','Examples'),B('IOTA (eski Tangle), Nano (block-lattice)','IOTA (legacy Tangle), Nano (block-lattice)')]],
+ unit:B('İşlem','Tx'),start:5100230,struct:B('Tangle işlemi (IOTA, Rebased öncesi)','Tangle transaction (IOTA, pre-Rebased)'),dt:1,
+ steps:[
+  S(B('Uç seçimi (tip selection)','Tip selection'),B('Henüz onaylanmamış işlemlere uç (tip) denir. Yeni işlem rastgele yürüyüşle iki uç seçer.','Unapproved transactions are called tips. A new transaction picks two tips via a random walk.'),1900,['trunk','branch']),
+  S(B('Seçilen uçlar doğrulanır','Chosen tips are validated'),B('İşlem, seçtiği iki ucun imzalarını ve çelişki (çifte harcama) olmadığını kontrol eder.','The transaction checks the two tips’ signatures and that they do not conflict (no double spend).'),1700,['trunk','branch']),
+  S(B('Küçük PoW','Small PoW'),B('Spam’e karşı az miktarda iş ispatı yapılır; madenci ya da ücret yoktur.','A little proof of work protects against spam; there are no miners and no fees.'),1700,['nonce']),
+  S(B('Tangle’a bağlanır','Attached to the Tangle'),B('Yeni işlem iki ucu onaylayarak çizgeye eklenir ve kendisi yeni bir uç olur.','The new transaction joins the graph by approving the two tips and becomes a tip itself.'),1800,['hash']),
+  S(B('Ağırlık birikir','Weight accumulates'),B('Bir işlemi doğrudan ya da dolaylı onaylayan her yeni işlem onun birikmiş ağırlığını artırır. Ağırlık arttıkça güven artar.','Each new transaction that directly or indirectly approves a transaction adds to its cumulative weight. More weight, more confidence.'),1900,[])],
+ mem(){const nodes=[];let id=0;for(let col=0;col<9;col++){const k=col===0?1:ri(1,2);for(let j=0;j<k;j++){const tips=nodes.filter(n=>n.col===col-1||(n.col===col-2&&n.appr===0));
+   const par=[];if(tips.length){par.push(tips[ri(0,tips.length-1)]);const o=tips[ri(0,tips.length-1)];if(o!==par[0])par.push(o)}
+   const n={id:id++,col,y:.15+Math.random()*.7,par,appr:0,wt:1,hash:hex(64)};par.forEach(p=>p.appr++);nodes.push(n)}}
+   const add=(n,seen)=>{n.par.forEach(p=>{if(!seen.has(p)){seen.add(p);p.wt++;add(p,seen)}})};nodes.forEach(n=>add(n,new Set()));return{nodes,col:8,nid:id}},
+ init(I){const m=I.m;let tips=m.nodes.filter(n=>n.appr===0);if(tips.length<2)tips=m.nodes.slice(-3);const a=tips[ri(0,tips.length-1)];let b=tips[ri(0,tips.length-1)];if(b===a)b=m.nodes.filter(n=>n!==a).slice(-1)[0];
+   return{par:[a,b],y:.15+Math.random()*.7,hash:hex(64),nonce:ri(1e4,9e5),addr:hex(10),val:ri(1,500)}},
+ complete(I,c){const m=I.m;const n={id:m.nid++,col:m.col+1,y:c.y,par:c.par,appr:0,wt:1,hash:c.hash};c.par.forEach(p=>p.appr++);
+   const seen=new Set();const add=x=>x.par.forEach(p=>{if(!seen.has(p)){seen.add(p);p.wt++;add(p)}});add(n);m.nodes.push(n);m.col++;m.nodes=m.nodes.filter(x=>x.col>m.col-10)},
+ producer:()=>L('herhangi bir kullanıcı','any user'),
+ fields(c,I,h){return{head:[
+   ['hash','hash',c.hash,L('İşlemin kimliği','Transaction ID')],
+   ['trunk','trunkTransaction',c.par[0].hash,L('Onaylanan 1. uç','First approved tip')],
+   ['branch','branchTransaction',c.par[1].hash,L('Onaylanan 2. uç','Second approved tip')],
+   ['addr','address','0x'+c.addr+'…',L('Alıcı adres','Recipient address')],
+   ['value','value',c.val+' Mi',L('Aktarılan miktar','Amount transferred')],
+   ['time','timestamp',String(I.ts),L('Zaman damgası','Timestamp')],
+   ['nonce','nonce',nf(c.nonce),L('Küçük PoW sonucu (spam koruması)','Small PoW result (anti-spam)')]],
+  body:[['note',L('not','note'),L('IOTA 2025’te Rebased ile PoS tabanlı deftere geçti','IOTA moved to a PoS-based ledger with Rebased in 2025'),L('Bu yapı eski Tangle tasarımını gösterir','This layout shows the legacy Tangle design')]]}},
+ draw(g){const{D,w,h,s,step,t,c,m,clock}=g;const fs=Math.max(10,12*s);
+  const cw=w*.085,shift=step===3?ease(t):step>3?1:0;const right=w*.86;
+  const X=col=>right-(m.col-col)*cw-shift*cw,Yp=y=>h*(.1+y*.78);
+  const anc=new Set();if(step===4){const add=x=>x.par.forEach(p=>{if(!anc.has(p)){anc.add(p);add(p)}});add({par:c.par})}
+  m.nodes.forEach(n=>n.par.forEach(p=>{D.alpha(.6,()=>D.arrow(X(n.col)-8*s,Yp(n.y),X(p.col)+9*s,Yp(p.y),C.line,1.2,5))}));
+  const ny=Yp(c.y);const nxx=step>=2?lerp(w*1.02,right+cw*(1-shift),step===2?ease(clamp(t*2)):1):-99;
+  m.nodes.forEach(n=>{const x=X(n.col),y=Yp(n.y);if(x<-20)return;const tip=n.appr===0;const chosen=c.par.includes(n);const a=anc.has(n);
+    const fill=chosen&&step<=1?C.amber:a?C.good:tip?C.surface:C.cyanSoft;const st=chosen?C.amber:a?C.good:tip?C.amber:C.cyan;
+    D.circle(x,y,9*s+2,fill,st,tip&&!chosen?1.2:1.6);
+    D.text(String(n.wt+(a&&step===4&&t>.3?1:0)),x,y,{size:fs*.72,fam:'mono',color:fill===C.amber||fill===C.good?C.bg:C.ink});
+    if(step===1&&chosen&&t>.4)D.check(x+12*s,y-12*s,9,C.good)});
+  if(step>=2){D.circle(nxx,ny,10*s+3,C.amberSoft,C.amber,2);D.text(L('yeni','new'),nxx,ny,{size:fs*.7,weight:600});
+    if(step===2){D.ctx.beginPath();D.ctx.arc(nxx,ny,15*s+4,clock/180,clock/180+TAU*.7);D.ctx.strokeStyle=C.amber;D.ctx.lineWidth=2;D.ctx.stroke();D.text('PoW',nxx,ny+26*s,{size:fs*.8,fam:'mono',color:C.muted})}
+    if(step>=3)c.par.forEach((p,j)=>D.partial(nxx-11*s,ny,X(p.col)+10*s,Yp(p.y),step===3?clamp(t*1.6-j*.2):1,C.amber,1.6))}
+  D.text(step===0?L('○ boş halka = uç (onaylanmamış)','○ hollow ring = tip (unapproved)'):step===4?L('sayılar = birikmiş ağırlık','numbers = cumulative weight'):'',w*.03,h*.96,{size:fs*.85,align:'left',color:C.muted})}
+}
+];
+
+/* ---------- instances ---------- */
+const feed=document.getElementById('feed'),chips=document.getElementById('chips');
+const inst=[];let round=0,gPaused=false,speed=1;
+const heights={};MECHS.forEach(m=>heights[m.id]={h:m.start,prev:hex(64),ts:Math.floor(Date.now()/1000)});
+const mems={};
+
+MECHS.forEach(m=>{const a=document.createElement('a');a.className='chip';a.href='#'+m.id;a.textContent=m.ab;a.dataset.id=m.id;chips.appendChild(a)});
+
+function esc(s){return String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}
+
+function headHTML(I){const m=I.mech;return `<div>
+    <div class="tag"><b>${String(I.idx+1).padStart(2,'0')}</b> / ${MECHS.length} · ${U('round')} ${I.round} · ${esc(m.ab)}</div>
+    <h2><span class="ab">${esc(m.ab)}</span> · ${esc(m.name)}<span class="tr">${esc(X(m.tr))}</span></h2>
+    <p class="proof"><b>${U('proof')}</b> ${esc(X(m.proof))}</p></div>
+    <dl class="meta">${m.meta.map(([a,b])=>`<div><dt>${esc(X(a))}</dt><dd>${esc(X(b))}</dd></div>`).join('')}</dl>`}
+
+function build(m,idx,r){
+  const sec=document.createElement('section');sec.className='mech';sec.id=r===1?m.id:m.id+'-'+r;sec.dataset.mid=m.id;
+  sec.innerHTML=`
+  <div class="mhead"></div>
+  <div class="grid">
+    <div>
+      <div class="stage"><canvas role="img"></canvas>
+        <div class="cap"><div class="now"><b class="sn"></b><span class="st"></span></div>
+          <div class="btns"><button class="btn prev" type="button">◀</button><button class="btn play" type="button"></button><button class="btn next" type="button">▶</button></div></div></div>
+      <ol class="steps">${m.steps.map(()=>`<li><b></b><span></span><i class="pg"></i></li>`).join('')}</ol>
+    </div>
+    <aside class="block"><div class="bh"><strong class="bt"></strong><small class="bs"></small></div><div class="rows"></div></aside>
+  </div>
+  <div class="chainwrap"><div class="chainlbl"><span class="cl"></span><span class="cnt"></span></div><div class="chain"></div></div>`;
+  feed.appendChild(sec);
+  const H=heights[m.id];
+  if(m.mem&&!mems[m.id])mems[m.id]=m.mem();
+  const I={m:mems[m.id]||{},mech:m,idx,sec,canvas:sec.querySelector('canvas'),step:0,el:0,clock:0,playing:!reduce,visible:false,added:0,round:r,minis:[],
+    get height(){return H.h+1},get prev(){return H.prev},get ts(){return H.ts}};
+  I.ctx=I.canvas.getContext('2d');I.D=mk(I.ctx);
+  I.c=m.init(I);
+  I.lis=[...sec.querySelectorAll('.steps li')];I.sn=sec.querySelector('.sn');I.st=sec.querySelector('.st');I.rows=sec.querySelector('.rows');I.bt=sec.querySelector('.bt');I.chain=sec.querySelector('.chain');I.cnt=sec.querySelector('.cnt');I.playBtn=sec.querySelector('.play');
+  I.lis.forEach((li,k)=>li.addEventListener('click',()=>{I.step=k;I.el=0;syncSteps(I)}));
+  sec.querySelector('.prev').onclick=()=>{I.step=Math.max(0,I.step-1);I.el=0;syncSteps(I)};
+  sec.querySelector('.next').onclick=()=>advanceStep(I);
+  I.playBtn.onclick=()=>{I.playing=!I.playing;labelSection(I)};
+  for(let k=5;k>=1;k--)I.minis.push({h:H.h-k,hash:hex(64),c:k===1?I.c:null});
+  if(reduce){I.step=Math.min(2,m.steps.length-1);I.el=m.steps[I.step].dur*.6}
+  labelSection(I);renderChain(I,false);
+  io.observe(sec);ro.observe(I.canvas);sizeCanvas(I);
+  inst.push(I);
+}
+function labelSection(I){const m=I.mech,sec=I.sec;
+  sec.querySelector('.mhead').innerHTML=headHTML(I);
+  I.lis.forEach((li,k)=>{li.querySelector('b').textContent=X(m.steps[k].t);li.querySelector('span').textContent=X(m.steps[k].d)});
+  I.canvas.setAttribute('aria-label',m.name+' · '+U('anim'));
+  sec.querySelector('.prev').setAttribute('aria-label',U('prev'));sec.querySelector('.next').setAttribute('aria-label',U('next'));
+  I.playBtn.textContent=I.playing?U('pause'):U('play');
+  sec.querySelector('.bs').textContent=X(m.struct);
+  sec.querySelector('.cl').textContent=m.id==='dag'?U('chainT'):U('chainB');
+  renderCard(I,false);syncSteps(I);counter(I)}
+function counter(I){I.cnt.textContent=I.added?U('added')+I.added+U('addedSfx'):''}
+function renderChain(I,animLast){const m=I.mech;
+  I.chain.innerHTML=I.minis.map((x,i)=>{const last=i===I.minis.length-1&&animLast;
+    let prod='';try{prod=x.c?m.producer(x.c,x.h):''}catch(e){}
+    return `<div class="mini${last?' new enter':''}"><div class="lk"></div><div class="bx"><div class="h">${esc(X(m.unit))} ${nf(x.h)}</div><div class="x">${esc(short(x.hash))}</div><div class="p">${esc(prod)}</div></div></div>`}).join('')}
+function renderCard(I,flash){
+  const m=I.mech,f=m.fields(I.c,I,I.height);I.bt.textContent=X(m.unit)+' #'+nf(I.height);
+  const old={};I.rows.querySelectorAll('.row').forEach(r=>old[r.dataset.k]=r.querySelector('.v').textContent);
+  const row=([k,l,v,n])=>`<div class="row${flash&&old[k]!==undefined&&old[k]!==String(v)?' flash':''}" data-k="${esc(k)}"><code class="k">${esc(l)}</code><code class="v" title="${esc(v)}">${esc(v)}</code><span class="n">${esc(n)}</span></div>`;
+  I.rows.innerHTML=`<div class="part">${U('head')}</div>${f.head.map(row).join('')}<div class="part">${U('body')}</div>${f.body.map(row).join('')}`;
+  hlRows(I)}
+function hlRows(I){const hl=I.mech.steps[I.step].hl||[];I.rows.querySelectorAll('.row').forEach(r=>r.classList.toggle('hl',hl.includes(r.dataset.k)))}
+function syncSteps(I){const m=I.mech;I.lis.forEach((li,k)=>{li.classList.toggle('on',k===I.step);li.classList.toggle('done',k<I.step)});
+  I.sn.textContent=(I.step+1)+'/'+m.steps.length;I.st.textContent=X(m.steps[I.step].t);hlRows(I)}
+function advanceStep(I){const m=I.mech;I.el=0;I.step++;if(I.step>=m.steps.length){I.step=0;completeCycle(I)}syncSteps(I)}
+function completeCycle(I){const m=I.mech,H=heights[m.id];
+  if(m.complete)m.complete(I,I.c);
+  const hgt=H.h+1;I.minis.push({h:hgt,hash:I.c.hash,c:I.c});if(I.minis.length>9)I.minis.shift();
+  H.h=hgt;H.prev=I.c.hash;H.ts+=Math.max(1,Math.round(m.dt));I.added++;counter(I);
+  renderChain(I,!reduce);I.c=m.init(I);renderCard(I,true)}
+
+/* ---------- sizing, visibility ---------- */
+function sizeCanvas(I){const r=I.canvas.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);
+  I.w=Math.max(1,r.width);I.h=Math.max(1,r.height);I.canvas.width=Math.round(I.w*dpr);I.canvas.height=Math.round(I.h*dpr);I.dpr=dpr;draw(I)}
+const ro=new ResizeObserver(es=>es.forEach(e=>{const I=inst.find(x=>x.canvas===e.target);if(I)sizeCanvas(I)}));
+const io=new IntersectionObserver(es=>es.forEach(e=>{const I=inst.find(x=>x.sec===e.target);if(I){I.visible=e.isIntersecting;if(I.visible)draw(I)}}),{rootMargin:'120px 0px'});
+
+function draw(I){const{ctx}=I;if(!I.w)return;ctx.setTransform(I.dpr,0,0,I.dpr,0,0);ctx.clearRect(0,0,I.w,I.h);
+  const st=I.mech.steps[I.step];const t=clamp(I.el/st.dur);
+  try{I.mech.draw({D:I.D,w:I.w,h:I.h,s:clamp(I.w/760,.55,1.15),step:I.step,t,c:I.c,m:I.m,clock:I.clock,height:I.height})}catch(err){console.error(I.mech.id,err)}
+  const pg=I.lis[I.step]&&I.lis[I.step].querySelector('.pg');if(pg)pg.style.transform='scaleX('+t+')'}
+
+let last=performance.now();
+function frame(now){const dt=Math.min(80,now-last);last=now;
+  for(const I of inst){if(!I.visible)continue;
+    if(I.playing&&!gPaused){I.clock+=dt*speed;I.el+=dt*speed;if(I.el>=I.mech.steps[I.step].dur)advanceStep(I)}
+    draw(I)}
+  requestAnimationFrame(frame)}
+
+/* ---------- infinite feed ---------- */
+const sentinel=document.getElementById('sentinel');
+function loopLabel(){sentinel.innerHTML=U('loop').replace('{n}',round+1)}
+function addRound(){round++;MECHS.forEach((m,i)=>build(m,i,round));loopLabel()}
+addRound();
+new IntersectionObserver(es=>{if(es[0].isIntersecting)addRound()},{rootMargin:'600px 0px'}).observe(sentinel);
+
+/* active chip */
+const cio=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const id=e.target.dataset.mid;chips.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.id===id));
+  const on=chips.querySelector('.chip.on');if(on)on.scrollIntoView({block:'nearest',inline:'nearest'})}}),{rootMargin:'-45% 0px -50% 0px'});
+new MutationObserver(()=>document.querySelectorAll('.mech:not([data-co])').forEach(s=>{s.dataset.co=1;cio.observe(s)})).observe(feed,{childList:true});
+document.querySelectorAll('.mech').forEach(s=>{s.dataset.co=1;cio.observe(s)});
+
+/* global controls + language */
+const gp=document.getElementById('gplay');
+function gLabel(){gp.textContent=gPaused?U('playAll'):U('pauseAll')}
+gp.onclick=()=>{gPaused=!gPaused;gp.setAttribute('aria-pressed',String(gPaused));gLabel()};
+document.getElementById('speed').onchange=e=>{speed=parseFloat(e.target.value)||1};
+function applyLang(){
+  document.documentElement.lang=lang;document.title=U('title');
+  document.querySelectorAll('[data-i18n]').forEach(e=>{e.innerHTML=U(e.dataset.i18n)});
+  document.querySelectorAll('#langseg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===lang)));
+  gLabel();loopLabel();inst.forEach(I=>{labelSection(I);renderChain(I,false);draw(I)})}
+document.querySelectorAll('#langseg button').forEach(b=>b.addEventListener('click',()=>{if(lang===b.dataset.lang)return;lang=b.dataset.lang;try{localStorage.setItem('atlas-lang',lang)}catch(e){}applyLang()}));
+applyLang();
+document.fonts&&document.fonts.ready.then(()=>inst.forEach(draw));
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
