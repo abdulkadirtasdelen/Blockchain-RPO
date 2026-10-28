@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Consensus Maps</title>
+<style>
+/* Layout: a gallery of 16:9 slide-ready maps; one global toolbar (language, preview theme, export settings), each map card has its own export buttons. */
+:root{
+  --bg:#eef2f5; --surface:#ffffff; --surface2:#e5ebf0; --ink:#0f2433; --muted:#566b7a; --line:#c9d4dc; --accent:#1478b8; --accent-soft:#d8ebf7;
+  --f-ui:"Segoe UI","Helvetica Neue",Arial,system-ui,sans-serif;
+  --f-mono:Consolas,"SFMono-Regular",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b1820; --surface:#11232e; --surface2:#183140; --ink:#e2edf3; --muted:#8fa6b4; --line:#26404f; --accent:#5bb8ee; --accent-soft:#143a50; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1820; --surface:#11232e; --surface2:#183140; --ink:#e2edf3; --muted:#8fa6b4; --line:#26404f; --accent:#5bb8ee; --accent-soft:#143a50; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-ui)}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bar{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.bar-in{max-width:1500px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.brand{font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:14px;margin-right:auto}
+.brand span{color:var(--accent)}
+.grp{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{background:var(--surface);border:0;border-right:1px solid var(--line);padding:5px 10px;font-size:13px;cursor:pointer;color:var(--muted)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:5px;padding:5px 11px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+label.chk{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 60px}
+.inner{max-width:1500px;margin:0 auto}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;margin-bottom:22px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(26px,3.6vw,40px);line-height:1.08;margin:6px 0 8px;text-wrap:balance}
+.intro p{margin:0;max-width:70ch;color:var(--muted)}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.toc a{font-family:var(--f-mono);font-size:12.5px;padding:4px 9px;border:1px solid var(--line);border-radius:4px;color:var(--muted);text-decoration:none;background:var(--surface)}
+.toc a:hover{color:var(--ink);border-color:var(--muted)}
+
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,640px),1fr));gap:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0;scroll-margin-top:80px}
+.card .pv{aspect-ratio:16/9;max-width:100%;border-bottom:1px solid var(--line);background:var(--surface2)}
+.card .pv svg{display:block;width:100%;height:100%}
+.tools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:10px 14px}
+.tools .nm{font-weight:600;font-size:14px;min-width:0}
+.tools .nm small{display:block;font-family:var(--f-mono);font-weight:400;font-size:11.5px;color:var(--muted)}
+.tools .dl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:700px){.intro{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand" data-i18n="brand"></div>
+    <div class="grp"><span data-i18n="lLang"></span>
+      <div class="seg" id="langseg"><button type="button" data-v="tr">TR</button><button type="button" data-v="en">EN</button></div></div>
+    <div class="grp"><span data-i18n="lPrev"></span>
+      <div class="seg" id="themeseg"><button type="button" data-v="auto" data-i18n="tAuto"></button><button type="button" data-v="light" data-i18n="tLight"></button><button type="button" data-v="dark" data-i18n="tDark"></button></div></div>
+    <div class="grp"><label for="scale" data-i18n="lScale"></label>
+      <select class="btn" id="scale"><option value="1">1× · 1600×900</option><option value="2" selected>2× · 3200×1800</option><option value="3">3× · 4800×2700</option></select></div>
+    <label class="chk grp"><input type="checkbox" id="transp"><span data-i18n="lTransp"></span></label>
+  </div>
+</header>
+
+<main class="wrap"><div class="inner">
+  <section class="intro">
+    <div>
+      <div class="eyebrow" data-i18n="eyebrow"></div>
+      <h1 data-i18n="h1"></h1>
+      <p data-i18n="intro"></p>
+    </div>
+    <div class="grp" style="flex-wrap:wrap">
+      <button class="btn pri" type="button" id="allLight" data-i18n="allLight"></button>
+      <button class="btn pri" type="button" id="allDark" data-i18n="allDark"></button>
+    </div>
+  </section>
+  <nav class="toc" id="toc"></nav>
+  <div class="gal" id="gal"></div>
+</div></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(()=>{
+/* ================= language ================= */
+let lang='tr';try{const s=localStorage.getItem('cmaps-lang');if(s==='tr'||s==='en')lang=s}catch(e){}
+const B=(tr,en)=>({tr,en});
+const X=v=>v&&typeof v==='object'&&'tr' in v?v[lang]:v;
+const UI={
+  brand:B('SENG433 · <span>Uzlaşma Haritaları</span>','SENG433 · <span>Consensus Maps</span>'),
+  lLang:B('Dil','Language'),lPrev:B('Önizleme','Preview'),tAuto:B('Sistem','System'),tLight:B('Açık','Light'),tDark:B('Koyu','Dark'),
+  lScale:B('PNG/JPG boyutu','PNG/JPG size'),lTransp:B('Şeffaf arka plan (SVG/PNG)','Transparent background (SVG/PNG)'),
+  eyebrow:B('SENG433 · Hafta 4 · Uzlaşma Mekanizmaları','SENG433 · Week 4 · Consensus Mechanisms'),
+  h1:B('Uzlaşma mekanizmaları zihin haritaları','Consensus mechanism mind maps'),
+  intro:B('Her harita 16:9 oranındadır ve doğrudan slayta yerleşir. Haritalar seçili dilde üretilir. Kartın altındaki düğmelerle açık ya da koyu temada SVG, PNG veya JPG indirebilirsiniz. Slayt için PNG 2× ya da ölçeklenebilir SVG önerilir.',
+    'Every map is 16:9 and drops straight onto a slide. Maps are generated in the selected language. Use the buttons under each card to download the light or dark version as SVG, PNG or JPG. For slides, PNG 2× or scalable SVG works best.'),
+  allLight:B('Tümünü indir · PNG açık','Download all · PNG light'),allDark:B('Tümünü indir · PNG koyu','Download all · PNG dark'),
+  light:B('Açık','Light'),dark:B('Koyu','Dark'),saved:B('İndirildi: ','Downloaded: '),failed:B('İndirme başarısız: ','Download failed: '),
+  footer:B('SENG433 · Blokzincir Teknolojisinin Temelleri · Hafta 4','SENG433 · Fundamentals of Blockchain Technology · Week 4')
+};
+const U=k=>X(UI[k]);
+
+/* ================= map content ================= */
+/* branch order: 0 Proof, 1 Workflow, 2 Finality (left) · 3 Strengths, 4 Limits, 5 Examples (right) */
+const BR={
+  proof:B('Kanıt · Proof','Proof'),flow:B('İşleyiş · Workflow','Workflow'),fin:B('Kesinlik · Finality','Finality & fork choice'),
+  pro:B('Güçlü yönler · Strengths','Strengths'),con:B('Sınırlar · Limits','Limits & risks'),ex:B('Örnekler · Examples','Examples & figures')
+};
+const std=(p,f,fi,pr,co,ex)=>[{t:BR.proof,i:p},{t:BR.flow,i:f},{t:BR.fin,i:fi},{t:BR.pro,i:pr},{t:BR.con,i:co},{t:BR.ex,i:ex}];
+
+const MAPS=[
+{id:'overview',ab:B('Uzlaşma','Consensus'),name:B('Mekanizmalar haritası','Map of mechanisms'),
+ sub:B('“Sıradaki bloğu kim yazacak?” sorusuna verilen farklı cevaplar','Different answers to “who writes the next block?”'),
+ br:[
+  {t:B('Kaynak harcayan','Resource-based'),i:[B('PoW · hesaplama işi','PoW · computational work'),B('PoC · disk alanı','PoC · disk capacity'),B('PoST · zamana yayılmış depolama','PoST · storage over time')]},
+  {t:B('Teminat tabanlı','Stake-based'),i:[B('PoS · kilitlenen teminat','PoS · locked stake'),B('DPoS · seçilmiş temsilciler','DPoS · elected delegates'),B('PoSA · teminat + onaylı kimlik','PoSA · stake + approved identity')]},
+  {t:B('Kimlik ve itibar','Identity & reputation'),i:[B('PoA · bilinen otoriteler','PoA · known authorities'),B('PoI · etkinlik ve itibar','PoI · activity and reputation'),B('PoB · yakılan coin ile bağlılık','PoB · commitment by burning coins')]},
+  {t:B('Oylama / BFT','Voting / BFT'),i:[B('PBFT · 2f+1 imzalı oy','PBFT · 2f+1 signed votes'),B('CometBFT · PBFT türevi','CometBFT · PBFT derivative'),B('RPCA · UNL’nin %80’i','RPCA · 80% of the UNL')]},
+  {t:B('Zaman ve donanım','Time & hardware'),i:[B('PoH · doğrulanabilir saat (+PoS)','PoH · verifiable clock (+PoS)'),B('PoET · güvenilir donanım (SGX)','PoET · trusted hardware (SGX)'),B('PoAc · PoW + PoS karması','PoAc · PoW + PoS hybrid')]},
+  {t:B('Veri yapısı','Data structure'),i:[B('Zincir: tek sıra blok','Chain: a single line of blocks'),B('DAG: işlemler birbirini onaylar','DAG: transactions approve each other'),B('Block-lattice: hesap başına zincir','Block-lattice: one chain per account')]}]},
+{id:'foundations',ab:B('Temeller','Foundations'),name:B('Uzlaşmanın teorik zemini','Theory behind consensus'),
+ sub:B('Her sistem bir takas yapar: güvenlik, hız, enerji, merkeziyetsizlik','Every system makes a trade-off: security, speed, energy, decentralisation'),
+ br:[
+  {t:B('CAP teoremi','CAP theorem'),i:[B('Consistency · Availability · Partition tolerance','Consistency · Availability · Partition tolerance'),B('Bölünmede: tutarlılık mı, erişilebilirlik mi?','On a partition: consistency or availability?'),B('Bitcoin ≈ AP · CometBFT ≈ CP','Bitcoin ≈ AP · CometBFT ≈ CP')]},
+  {t:B('PACELC (Abadi, 2012)','PACELC (Abadi, 2012)'),i:[B('Bölünme yoksa: gecikme mi, tutarlılık mı?','No partition: latency or consistency?'),B('Bitcoin: PA/EL','Bitcoin: PA/EL'),B('PBFT / CometBFT: PC/EC','PBFT / CometBFT: PC/EC')]},
+  {t:B('Bizans hata toleransı','Byzantine fault tolerance'),i:[B('Bizans Generalleri (Lamport vd., 1982)','Byzantine Generals (Lamport et al., 1982)'),B('n ≥ 3f + 1 düğüm','n ≥ 3f + 1 nodes'),B('Karar eşiği (quorum): 2f + 1','Decision quorum: 2f + 1')]},
+  {t:B('Uzlaşmanın parçaları','Parts of consensus'),i:[B('Sybil direnci: kim önerebilir? (“proof”)','Sybil resistance: who may propose? (the “proof”)'),B('Çatal seçim kuralı (fork-choice rule)','Fork-choice rule'),B('Kesinlik (finality)','Finality')]},
+  {t:B('Kesinlik türleri','Types of finality'),i:[B('Olasılıksal: her onayla risk azalır (PoW)','Probabilistic: risk shrinks with each confirmation (PoW)'),B('Deterministik: commit anında kesin (BFT)','Deterministic: final at commit (BFT)'),B('Ekonomik: geri almak ≥ 1/3 teminatı yakar (Casper FFG)','Economic: reverting burns ≥ 1/3 of stake (Casper FFG)')]},
+  {t:B('Takaslar','Trade-offs'),i:[B('Hız ↑ → doğrulayıcı sayısı ↓','Speed ↑ → number of validators ↓'),B('Enerji ↓ → teminat ya da kimliğe güven ↑','Energy ↓ → reliance on stake or identity ↑'),B('Hepsini birden en üste çıkaramazsınız','You cannot maximise them all at once')]}]},
+{id:'pow',ab:'PoW',name:'Proof of Work',sub:B('İş İspatı · “Hesaplama işi yaptım.”','“I have done computational work.”'),
+ br:std(
+  [B('Hesaplama işi (hash gücü)','Computational work (hashrate)'),B('Koşul: hash < hedef (target)','Condition: hash < target'),B('Sybil direnci = enerji maliyeti','Sybil resistance = energy cost')],
+  [B('Mempool’dan işlemleri seç','Pick transactions from the mempool'),B('Merkle kökü + önceki blok hash’i','Merkle root + previous block hash'),B('Nonce ara: SHA-256d, milyarlarca deneme','Search the nonce: SHA-256d, billions of tries'),B('İlk bulan yayar, diğerleri doğrular','First finder broadcasts, others verify')],
+  [B('Çatal seçimi: en çok birikmiş iş','Fork choice: most cumulative work'),B('Olasılıksal: ~6 onay ≈ 60 dk','Probabilistic: ~6 confirmations ≈ 60 min'),B('CAP: AP · PACELC: PA/EL','CAP: AP · PACELC: PA/EL')],
+  [B('İzinsiz, herkese açık katılım','Permissionless, open participation'),B('2009’dan beri sınanmış güvenlik','Battle-tested security since 2009'),B('Üretmek pahalı, doğrulamak ucuz','Expensive to produce, cheap to verify')],
+  [B('Yüksek enerji tüketimi','High energy consumption'),B('%51 saldırısı riski','51% attack risk'),B('Havuz yoğunlaşması: ilk 2 havuz > %50','Pool concentration: top 2 pools > 50%'),B('ASIC yarışı, donanım eskimesi','ASIC arms race, hardware obsolescence')],
+  [B('Bitcoin: ~10 dk blok, 2016 blokta zorluk ayarı','Bitcoin: ~10 min blocks, retarget every 2016'),B('Litecoin (Scrypt)','Litecoin (Scrypt)'),B('Ethereum: The Merge’e kadar (15.09.2022)','Ethereum: until The Merge (15 Sep 2022)')])},
+{id:'pos',ab:'PoS',name:'Proof of Stake',sub:B('Hisse (Pay) İspatı · “Varlıklarımı kilitledim; hile yaparsam kaybederim.”','“I have locked my assets; if I cheat, I lose them.”'),
+ br:std(
+  [B('Kilitlenen teminat (stake)','Locked stake'),B('Ethereum: en az 32 ETH','Ethereum: at least 32 ETH'),B('Hilenin bedeli: slashing','Price of cheating: slashing')],
+  [B('RANDAO ile önerici seçimi','Proposer chosen via RANDAO'),B('12 s’lik slotta blok önerisi','Block proposed in a 12 s slot'),B('Komite oyları (attestations)','Committee votes (attestations)'),B('32 slot = 1 epoch, kontrol noktaları','32 slots = 1 epoch, checkpoints')],
+  [B('Çatal seçimi: LMD-GHOST','Fork choice: LMD-GHOST'),B('Casper FFG: ~12,8 dk (2 epoch)','Casper FFG: ~12.8 min (2 epochs)'),B('Ekonomik kesinlik','Economic finality')],
+  [B('The Merge sonrası ~%99,9 daha az enerji','~99.9% less energy after The Merge'),B('Düşük donanım engeli','Low hardware barrier'),B('Güvenlik ekonomik cezayla sağlanır','Security enforced by economic penalties')],
+  [B('Teminat yoğunlaşması (likit staking)','Stake concentration (liquid staking)'),B('Nothing-at-stake, long-range saldırıları','Nothing-at-stake, long-range attacks'),B('Zengin daha zengin olur','The rich get richer')],
+  [B('Ethereum (2022’den beri)','Ethereum (since 2022)'),B('Cardano (Ouroboros)','Cardano (Ouroboros)')])},
+{id:'dpos',ab:'DPoS',name:'Delegated Proof of Stake',sub:B('Yetki Devirli Hisse İspatı · “Token sahipleri beni temsilci seçti.”','“Token holders elected me as their delegate.”'),
+ br:std(
+  [B('Token sahiplerinin oyu','Votes of token holders'),B('Seçilmiş temsilciler (witness / producer)','Elected delegates (witnesses / producers)')],
+  [B('Sürekli, token ağırlıklı oylama','Continuous, token-weighted voting'),B('En çok oy alan 21 (EOS) / 27 (TRON) üretici','Top 21 (EOS) / 27 (TRON) producers'),B('Sırayla blok üretimi (round-robin)','Round-robin block production'),B('2/3 + 1 üretici onayı','2/3 + 1 producer confirmations')],
+  [B('Deterministik, ~1 s (Savanna)','Deterministic, ~1 s (Savanna)'),B('LIB: son geri alınamaz blok','LIB: last irreversible block')],
+  [B('Çok hızlı: 0,5–3 s blok','Very fast: 0.5–3 s blocks'),B('Enerji verimli','Energy-efficient'),B('Zincir üstü yönetişim','On-chain governance')],
+  [B('Az üretici → merkezileşme','Few producers → centralisation'),B('Seçmen ilgisizliği (voter apathy)','Voter apathy'),B('Oy satın alma, kartelleşme','Vote buying, cartels')],
+  [B('Vaulta (EOS): 21 üretici, ~0,5 s','Vaulta (EOS): 21 producers, ~0.5 s'),B('TRON: 27 süper temsilci, ~3 s','TRON: 27 super representatives, ~3 s')])},
+{id:'poa',ab:'PoA',name:'Proof of Authority',sub:B('Yetki İspatı · “Kimliği doğrulanmış, yetkili bir otoriteyim.”','“I am an authorised, verified identity.”'),
+ br:std(
+  [B('Doğrulanmış gerçek kimlik','Verified real-world identity'),B('İtibar = teminat','Reputation = stake'),B('Önceden onaylı otoriteler','Pre-approved authorities')],
+  [B('number mod N → sıradaki imzacı','number mod N → in-turn signer'),B('Blok + extraData’ya imza (seal)','Block + signature in extraData (seal)'),B('Diğerleri imzacıyı doğrular','Others verify the signer'),B('Otorite ekleme/çıkarma oylaması','Voting to add/remove authorities')],
+  [B('Clique: en ağır zincir, kısa çatallar olası','Clique: heaviest chain, short forks possible'),B('IBFT 2.0 / QBFT: deterministik','IBFT 2.0 / QBFT: deterministic')],
+  [B('Yüksek hız, düşük maliyet','High throughput, low cost'),B('Öngörülebilir blok üretimi','Predictable block production'),B('Konsorsiyum ve kurumsal ağlara uygun','Fits consortium and enterprise networks')],
+  [B('Az doğrulayıcı → merkezileşme','Few validators → centralisation'),B('Otoritelere güven şart','Requires trust in authorities'),B('Sansür riski','Censorship risk')],
+  [B('VeChainThor','VeChainThor'),B('Hyperledger Besu: Clique, IBFT 2.0, QBFT','Hyperledger Besu: Clique, IBFT 2.0, QBFT'),B('Merkez bankası dijital parası (CBDC) tartışmaları','Central bank digital currency (CBDC) debates')])},
+{id:'posa',ab:'PoSA',name:'Proof of Staked Authority',sub:B('Teminatlı Yetki İspatı · “Hem onaylıyım hem de teminat yatırdım.”','“I am both approved and staked.”'),
+ br:std(
+  [B('Teminat + onaylı kimlik','Stake + approved identity'),B('İtibar ve para birlikte risktedir','Reputation and money both at risk')],
+  [B('Epoch başında teminata göre aktif set','Active set by stake at each epoch'),B('Sırayla blok (in-turn, difficulty = 2)','In-turn block (difficulty = 2)'),B('BLS ile birleştirilmiş hızlı kesinlik oyları','Aggregated BLS fast-finality votes')],
+  [B('Hızlı kesinlik: birkaç blok','Fast finality: a few blocks'),B('Çatal seçimi: en ağır zincir + oylar','Fork choice: heaviest chain + votes')],
+  [B('2025’te < 1 s blok süresi','< 1 s block time in 2025'),B('Çifte hesap verebilirlik','Double accountability'),B('EVM uyumlu','EVM-compatible')],
+  [B('Küçük doğrulayıcı seti','Small validator set'),B('Merkezileşme riski','Centralisation risk'),B('Ekosistem tek bir şirkete yakın','Ecosystem close to a single company')],
+  [B('BNB Smart Chain (Parlia)','BNB Smart Chain (Parlia)')])},
+{id:'pbft',ab:'PBFT',name:'Practical Byzantine Fault Tolerance',sub:B('Pratik Bizans Hata Toleransı · “2f+1 düğüm aynı sıraya imza attı.”','“2f+1 nodes signed the same order.”'),
+ br:std(
+  [B('2f + 1 imzalı oy (quorum)','2f + 1 signed votes (quorum)'),B('n = 3f + 1 düğüm, f hatalı','n = 3f + 1 nodes, f faulty')],
+  [B('request → pre-prepare → prepare','request → pre-prepare → prepare'),B('commit → reply','commit → reply'),B('Lider = view mod n','Leader = view mod n'),B('Lider hatalıysa: view change','Faulty leader: view change')],
+  [B('Deterministik: commit anında kesin','Deterministic: final at commit'),B('Çatal yok, onay beklenmez','No forks, no waiting'),B('CAP: CP · PACELC: PC/EC','CAP: CP · PACELC: PC/EC')],
+  [B('Anında kesinlik','Immediate finality'),B('Bizans hatalarına dayanıklı','Tolerates Byzantine faults'),B('Enerji verimli','Energy-efficient')],
+  [B('O(n²) mesaj → onlarca düğüm, binler değil','O(n²) messages → tens of nodes, not thousands'),B('İzinli (permissioned) ağ gerekir','Needs a permissioned network'),B('Lider darboğazı','Leader bottleneck')],
+  [B('Castro & Liskov, 1999','Castro & Liskov, 1999'),B('Hyperledger Fabric: SmartBFT (v3.0)','Hyperledger Fabric: SmartBFT (v3.0)'),B('CometBFT (eski adı Tendermint), Cosmos','CometBFT (formerly Tendermint), Cosmos')])},
+{id:'rpca',ab:'RPCA',name:'Ripple Protocol Consensus Algorithm',sub:B('Bugünkü adı XRP Ledger Uzlaşma Protokolü · “UNL’nin %80’i aynı kümeyi onayladı.”','Today: XRP Ledger Consensus Protocol · “80% of my UNL approved the same set.”'),
+ br:std(
+  [B('Güvenilen listeden (UNL) onay','Approval from the trusted list (UNL)'),B('Madencilik ya da teminat yok','No mining, no stake')],
+  [B('Aday işlem kümesi','Candidate transaction set'),B('Turlar: %50 → %60 → %70 → %80','Rounds: 50% → 60% → 70% → 80%'),B('Destek bulamayan işlem ertelenir','Unsupported transactions are deferred'),B('Defter kapanır, doğrulamalar yayılır','Ledger closes, validations broadcast')],
+  [B('Deterministik','Deterministic'),B('Defter başına 3–5 s','3–5 s per ledger')],
+  [B('Hızlı ve ucuz ödemeler','Fast, cheap payments'),B('~1.500 işlem/s','~1,500 transactions/s'),B('Enerji verimli','Energy-efficient')],
+  [B('Güven, UNL’lerin örtüşmesine bağlı','Safety depends on UNL overlap'),B('Varsayılan liste → merkezileşme kaygısı','Default list → centralisation concerns')],
+  [B('XRP Ledger (XRPL)','XRP Ledger (XRPL)')])},
+{id:'poh',ab:'PoH',name:'Proof of History',sub:B('Tarihçe İspatı (Solana) · “Olayların sırasını doğrulanabilir bir saatle gösteririm.”','Solana · “I prove the order of events with a verifiable clock.”'),
+ br:std(
+  [B('Sıralı SHA-256 zinciri = zaman','Sequential SHA-256 chain = time'),B('Tek başına uzlaşma değildir, PoS ile çalışır','Not consensus on its own; runs with PoS')],
+  [B('PoS’a göre lider takvimi (4 slot)','Leader schedule by stake (4 slots)'),B('İşlemler hash zincirine karışır','Transactions mixed into the hash chain'),B('Turbine ile parça parça yayılım','Shreds fanned out via Turbine'),B('Tower BFT oyları, kilitler 2, 4, 8…','Tower BFT votes, lockouts 2, 4, 8…')],
+  [B('32 onay ≈ 12,8 s → rooted','32 confirmations ≈ 12.8 s → rooted'),B('Alpenglow (2025’te onaylandı): ~150 ms hedef','Alpenglow (approved 2025): ~150 ms target')],
+  [B('400 ms slot, yüksek verim','400 ms slots, high throughput'),B('Saat senkronizasyonu gerekmez','No clock synchronisation needed')],
+  [B('Yüksek donanım gereksinimi','High hardware requirements'),B('Geçmişte ağ kesintileri','Past network outages'),B('İsim yanıltıcı: PoH karar vermez','Misleading name: PoH decides nothing')],
+  [B('Solana','Solana')])},
+{id:'dag',ab:'DAG',name:'Directed Acyclic Graph',sub:B('Yönlü Döngüsüz Çizge · “Yeni işlemim önceki iki işlemi doğruladı.”','“My new transaction approved two earlier ones.”'),
+ br:std(
+  [B('Önceki işlemleri onaylamak','Approving earlier transactions'),B('Spam’e karşı küçük PoW','Small PoW against spam')],
+  [B('Uç (tip) seçimi','Tip selection'),B('İki ucu doğrula','Validate two tips'),B('Küçük PoW, sonra bağlan','Small PoW, then attach'),B('Birikmiş ağırlık artar','Cumulative weight grows')],
+  [B('Birikmiş ağırlıkla, olasılıksal','By cumulative weight, probabilistic'),B('Eski IOTA: merkezi koordinatör','Legacy IOTA: central coordinator')],
+  [B('Blok yok, paralel ekleme','No blocks, parallel attachment'),B('Ücretsiz mikro ödemeler','Feeless micropayments'),B('IoT için tasarlandı','Designed for IoT')],
+  [B('Düşük trafikte zayıf güvenlik','Weak security at low traffic'),B('Analizi karmaşık','Hard to analyse'),B('Koordinatöre bağımlılık (eski IOTA)','Coordinator dependency (legacy IOTA)')],
+  [B('IOTA: 2025’te Rebased ile PoS’a geçti','IOTA: moved to PoS with Rebased (2025)'),B('Nano: block-lattice + temsilci oylaması','Nano: block-lattice + representative voting')])},
+{id:'others',ab:B('Diğerleri','Others'),name:B('Diğer uzlaşma algoritmaları','Other consensus algorithms'),
+ sub:B('Her biri “işi” başka bir kıt kaynakla değiştirir','Each replaces “work” with another scarce resource'),
+ br:[
+  {t:B('PoC · Proof of Capacity','PoC · Proof of Capacity'),i:[B('Hesaplama yerine disk alanı','Disk space instead of computation'),B('Örnek: Signum (eski Burstcoin)','Example: Signum (formerly Burstcoin)')]},
+  {t:B('PoET · Proof of Elapsed Time','PoET · Proof of Elapsed Time'),i:[B('Güvenilir donanım (Intel SGX) rastgele bekleme','Trusted hardware (Intel SGX) random wait'),B('Hyperledger Sawtooth, artık tarihsel','Hyperledger Sawtooth, now historical')]},
+  {t:B('PoB · Proof of Burn','PoB · Proof of Burn'),i:[B('Coin’i kullanılamaz adrese gönder','Send coins to an unspendable address'),B('Örnek: Counterparty (2014, XCP)','Example: Counterparty (2014, XCP)')]},
+  {t:B('PoI · Proof of Importance','PoI · Proof of Importance'),i:[B('Teminat + etkinlik + itibar','Stake + activity + reputation'),B('Örnek: NEM (Symbol: PoS+)','Example: NEM (Symbol: PoS+)')]},
+  {t:B('PoAc · Proof of Activity','PoAc · Proof of Activity'),i:[B('PoW başlatır, PoS onaylar','PoW starts, PoS confirms'),B('Benzer karma: Decred','Similar hybrid: Decred')]},
+  {t:B('PoST · Proof of Space-Time','PoST · Proof of Space-Time'),i:[B('Depolamayı zaman içinde kanıtla','Prove storage over time'),B('Örnek: Filecoin','Example: Filecoin')]}]}
+];
+
+/* ================= palettes for the exported maps ================= */
+const PAL={
+ light:{bg:'#ffffff',card:'#f5f8fa',ink:'#0f2433',muted:'#5a6d7b',line:'#d3dce3',center:'#0f2433',centerInk:'#ffffff',
+   br:['#1478b8','#0e8078','#6a4fc4','#1f7f4f','#c0392f','#b86e00']},
+ dark:{bg:'#0e1a22',card:'#15252f',ink:'#e6eef3',muted:'#93a8b6',line:'#2a4150',center:'#e6eef3',centerInk:'#0e1a22',
+   br:['#5bb8ee','#3cc2b6','#a894f2','#52c98a','#f07a70','#f2b448']}
+};
+const FONT='"Segoe UI","Helvetica Neue",Arial,sans-serif';
+const W=1600,H=900;
+const mc=document.createElement('canvas').getContext('2d');
+const tw=(s,size,weight)=>{mc.font=`${weight} ${size}px ${FONT}`;return mc.measureText(s).width};
+function wrap(s,size,weight,max){const words=String(s).split(' ');const lines=[];let cur='';
+  for(const w of words){const t=cur?cur+' '+w:w;if(tw(t,size,weight)<=max||!cur)cur=t;else{lines.push(cur);cur=w}}
+  if(cur)lines.push(cur);return lines}
+const xe=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+const upHead=t=>t.split(' · ').map((p,i)=>p.toLocaleUpperCase(lang==='tr'&&i===0?'tr-TR':'en-US')).join(' · ');
+function buildSVG(map,theme,transparent){
+  const P=PAL[theme];const ab=X(map.ab),name=X(map.name),sub=X(map.sub);
+  const colW=500,lx=40,rx=W-40-colW,top=150,bottom=852;
+  let leaf=20,head=17;
+  // layout per side, shrink fonts if needed
+  let cards;
+  for(let tries=0;tries<8;tries++){
+    cards=map.br.map((b,i)=>{const lines=b.i.map(it=>wrap(X(it),leaf,400,colW-56));const n=lines.reduce((a,l)=>a+l.length,0);
+      const lh=leaf*1.32;const h=18+head+14+n*lh+(b.i.length-1)*6+16;return{b,i,lines,h,lh}});
+    const L=cards.slice(0,3).reduce((a,c)=>a+c.h,0),R=cards.slice(3).reduce((a,c)=>a+c.h,0);
+    if(Math.max(L,R)+2*22<=bottom-top)break;leaf-=1;head=Math.max(13,head-.5)}
+  const place=(arr,x)=>{const tot=arr.reduce((a,c)=>a+c.h,0);const gap=(bottom-top-tot)/(arr.length+1);let y=top+gap;arr.forEach(c=>{c.x=x;c.y=y;y+=c.h+gap})};
+  place(cards.slice(0,3),lx);place(cards.slice(3),rx);
+  const cx=W/2,cy=(top+bottom)/2+10,cw=300;
+  const nameLines=wrap(name,22,600,cw-40);const abSize=ab.length>9?36:48;const ch=34+abSize+nameLines.length*28+20;
+  let o=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family='${FONT}'>`;
+  if(!transparent)o+=`<rect width="${W}" height="${H}" fill="${P.bg}"/>`;
+  // title
+  o+=`<text x="40" y="70" font-size="40" font-weight="700" fill="${P.br[0]}">${xe(ab)}<tspan fill="${P.ink}" font-weight="600" font-size="30" dx="14">${xe(name)}</tspan></text>`;
+  o+=`<text x="40" y="108" font-size="19" fill="${P.muted}">${xe(sub)}</text>`;
+  o+=`<line x1="40" y1="128" x2="${W-40}" y2="128" stroke="${P.line}" stroke-width="1.5"/>`;
+  // connectors
+  cards.forEach((c,i)=>{const col=P.br[i%6];const left=i<3;const sx=left?cx-cw/2:cx+cw/2;const sy=cy+((i%3)-1)*Math.min(30,ch/4);
+    const ex=left?c.x+colW:c.x;const ey=c.y+c.h/2;const dx=(ex-sx)*.5;
+    o+=`<path d="M${sx} ${sy} C${sx+dx} ${sy}, ${ex-dx} ${ey}, ${ex} ${ey}" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round"/>`;
+    o+=`<circle cx="${ex}" cy="${ey}" r="6" fill="${col}"/>`});
+  // center
+  o+=`<rect x="${cx-cw/2}" y="${cy-ch/2}" width="${cw}" height="${ch}" rx="22" fill="${P.center}"/>`;
+  let ty=cy-ch/2+26+abSize*.82;
+  o+=`<text x="${cx}" y="${ty}" text-anchor="middle" font-size="${abSize}" font-weight="700" fill="${P.centerInk}">${xe(ab)}</text>`;
+  ty+=12;nameLines.forEach(l=>{ty+=28;o+=`<text x="${cx}" y="${ty}" text-anchor="middle" font-size="22" font-weight="600" fill="${P.centerInk}" fill-opacity=".85">${xe(l)}</text>`});
+  // cards
+  cards.forEach((c,i)=>{const col=P.br[i%6];
+    o+=`<rect x="${c.x}" y="${c.y}" width="${colW}" height="${c.h}" rx="14" fill="${P.card}" stroke="${col}" stroke-width="2"/>`;
+    o+=`<text x="${c.x+22}" y="${c.y+18+head}" font-size="${head}" font-weight="700" letter-spacing=".3" fill="${col}">${xe(X(c.b.t))}</text>`;
+    let y=c.y+18+head+14;
+    c.lines.forEach(ls=>{y+=c.lh*.78;o+=`<circle cx="${c.x+28}" cy="${y-leaf*.33}" r="4.5" fill="${col}"/>`;
+      ls.forEach((l,k)=>{if(k)y+=c.lh;o+=`<text x="${c.x+44}" y="${y}" font-size="${leaf}" fill="${P.ink}">${xe(l)}</text>`});y+=c.lh*.22+6})});
+  o+=`<text x="${W-40}" y="${H-18}" text-anchor="end" font-size="14" fill="${P.muted}">${xe(U('footer'))}</text>`;
+  return o+'</svg>'}
+
+/* ================= export ================= */
+const toastEl=document.getElementById('toast');let tt;
+function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('on'),2200)}
+function save(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast(U('saved')+name)}
+function fname(map,theme,ext){return `consensus-map-${map.id}-${lang}-${theme}.${ext}`}
+function exportMap(map,theme,fmt){
+  const transp=document.getElementById('transp').checked&&fmt!=='jpg';
+  const svg=buildSVG(map,theme,transp);
+  if(fmt==='svg'){save(new Blob([svg],{type:'image/svg+xml'}),fname(map,theme,'svg'));return Promise.resolve()}
+  const sc=parseFloat(document.getElementById('scale').value)||2;
+  return new Promise(res=>{const img=new Image();const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+    img.onload=()=>{const cv=document.createElement('canvas');cv.width=W*sc;cv.height=H*sc;const g=cv.getContext('2d');
+      if(fmt==='jpg'){g.fillStyle=PAL[theme].bg;g.fillRect(0,0,cv.width,cv.height)}
+      g.drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+      cv.toBlob(b=>{if(b)save(b,fname(map,theme,fmt));else toast(U('failed')+fname(map,theme,fmt));res()},fmt==='jpg'?'image/jpeg':'image/png',.94)};
+    img.onerror=()=>{toast(U('failed')+fname(map,theme,fmt));res()};img.src=url})}
+
+/* ================= page ================= */
+let pageTheme='auto';try{const s=localStorage.getItem('cmaps-theme');if(['auto','light','dark'].includes(s))pageTheme=s}catch(e){}
+const mq=matchMedia('(prefers-color-scheme: dark)');
+const effTheme=()=>pageTheme==='auto'?(mq.matches?'dark':'light'):pageTheme;
+const gal=document.getElementById('gal'),toc=document.getElementById('toc');
+function render(){
+  document.documentElement.lang=lang;
+  if(pageTheme==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',pageTheme);
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.innerHTML=U(e.dataset.i18n));
+  document.querySelectorAll('#langseg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===lang)));
+  document.querySelectorAll('#themeseg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===pageTheme)));
+  const th=effTheme();
+  toc.innerHTML=MAPS.map(m=>`<a href="#map-${m.id}">${xe(X(m.ab))}</a>`).join('');
+  gal.innerHTML=MAPS.map(m=>`<article class="card" id="map-${m.id}">
+    <div class="pv">${buildSVG(m,th,false)}</div>
+    <div class="tools"><div class="nm">${xe(X(m.ab))} · ${xe(X(m.name))}<small>consensus-map-${m.id}-${lang}-*.svg / .png / .jpg</small></div>
+      <div class="dl" data-id="${m.id}">
+        <div class="seg dlt"><button type="button" data-v="light" aria-pressed="${th==='light'}">${U('light')}</button><button type="button" data-v="dark" aria-pressed="${th==='dark'}">${U('dark')}</button></div>
+        <button class="btn" type="button" data-f="svg">SVG</button><button class="btn" type="button" data-f="png">PNG</button><button class="btn" type="button" data-f="jpg">JPG</button>
+      </div></div></article>`).join('');
+  gal.querySelectorAll('svg').forEach((s,i)=>{s.setAttribute('role','img');s.setAttribute('aria-label',X(MAPS[i].ab)+' · '+X(MAPS[i].name))});
+}
+gal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const dl=b.closest('.dl');if(!dl)return;
+  if(b.dataset.v){dl.querySelectorAll('.dlt button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));return}
+  const map=MAPS.find(m=>m.id===dl.dataset.id);const theme=dl.querySelector('.dlt button[aria-pressed="true"]').dataset.v;exportMap(map,theme,b.dataset.f)});
+document.getElementById('langseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;lang=b.dataset.v;try{localStorage.setItem('cmaps-lang',lang)}catch(_){}render()});
+document.getElementById('themeseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;pageTheme=b.dataset.v;try{localStorage.setItem('cmaps-theme',pageTheme)}catch(_){}render()});
+mq.addEventListener('change',()=>{if(pageTheme==='auto')render()});
+async function all(theme){for(const m of MAPS){await exportMap(m,theme,'png');await new Promise(r=>setTimeout(r,350))}}
+document.getElementById('allLight').onclick=()=>all('light');
+document.getElementById('allDark').onclick=()=>all('dark');
+render();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(render);
+})();
+</script>
+</body>
+</html>
