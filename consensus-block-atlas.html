@@ -1,8 +1,4 @@
-<!doctype html>
-<html lang="tr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Uzlaşma Blok Atlası</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -153,9 +149,6 @@ h2 .tr{display:block;font-family:var(--f-body);font-weight:500;font-stretch:100%
 }
 @media (prefers-reduced-motion:reduce){.mini.enter,.row.flash .v{animation:none}}
 </style>
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
-</head>
-<body>
 
 <header class="bar">
   <div class="bar-in">
@@ -197,6 +190,11 @@ h2 .tr{display:block;font-family:var(--f-body);font-weight:500;font-stretch:100%
 
 <script>
 (()=>{
+/* ---------- AYAR / SETTING ----------
+   LOOP = true  → sayfa sonunda mekanizmalar yeni turla baştan eklenir (sonsuz kaydırma)
+   LOOP = false → sayfa DAG bölümünde biter */
+const LOOP=false;
+
 /* ---------- language ---------- */
 let lang='tr';try{const s=localStorage.getItem('atlas-lang');if(s==='en'||s==='tr')lang=s}catch(e){}
 const L=(tr,en)=>lang==='en'?en:tr;
@@ -217,6 +215,7 @@ const UI={
  chainB:B('Zincir · eklenen bloklar','Chain · appended blocks'),chainT:B('Zincir · onaylanan işlemler','Tangle · attached transactions'),
  added:B('bu bölümde +','+'),addedSfx:B('',' in this section'),anim:B('blok ekleme animasyonu','block-append animation'),
  loop:B('Zincir devam ediyor · <b>tur {n} yükleniyor</b>','The chain continues · <b>loading round {n}</b>'),
+ end:B('Sayfanın sonu · <b>animasyonlar her bölümde çalışmaya devam ediyor</b>','End of page · <b>animations keep running in every section</b>'),
  title:B('Uzlaşma Blok Atlası','Consensus Block Atlas')
 };
 const U=k=>X(UI[k]);
@@ -760,10 +759,10 @@ function frame(now){const dt=Math.min(80,now-last);last=now;
 
 /* ---------- infinite feed ---------- */
 const sentinel=document.getElementById('sentinel');
-function loopLabel(){sentinel.innerHTML=U('loop').replace('{n}',round+1)}
+function loopLabel(){sentinel.innerHTML=LOOP?U('loop').replace('{n}',round+1):U('end')}
 function addRound(){round++;MECHS.forEach((m,i)=>build(m,i,round));loopLabel()}
 addRound();
-new IntersectionObserver(es=>{if(es[0].isIntersecting)addRound()},{rootMargin:'600px 0px'}).observe(sentinel);
+if(LOOP)new IntersectionObserver(es=>{if(es[0].isIntersecting)addRound()},{rootMargin:'600px 0px'}).observe(sentinel);
 
 /* active chip */
 const cio=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const id=e.target.dataset.mid;chips.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.id===id));
@@ -788,5 +787,4 @@ requestAnimationFrame(frame);
 })();
 </script>
 
-</body>
-</html>
+</body></html>
