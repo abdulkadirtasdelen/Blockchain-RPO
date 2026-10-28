@@ -1,4 +1,4 @@
 # Blockchain-RPO
 
-
-Consensus Block Atlas [consensus_block_atlas.html](https://abdulkadirtasdelen.github.io/Blockchain-RPO/consensus_block_atlas.html).
+Merkle Tree Workshop [consensus_block_atlas.html](https://abdulkadirtasdelen.github.io/Blockchain-RPO/consensus-block-atlas.html).
+Consensus Block Atlas [consensus-block-atlas.html](https://abdulkadirtasdelen.github.io/Blockchain-RPO/consensus-block-atlas.html).
